@@ -1,0 +1,16 @@
+(Note: This file exists mainly for copyright purposes rather than
+ credit-giving, so tries to describe only who wrote what files rather
+ than who provided e.g. important-but-short bug-fixes.)
+
+Stephen Tweedie: Main author of the defrag package.
+
+Alexey Vovenko and Ulrich Habel: Adaptation for the xia, ext2
+filesystem and the picture option.
+
+Linus Torvalds and Remy Card: Authors of the fsck and e2fsck programs,
+which served as a basis for the initial version.
+
+Theodore Ts'o: llseek.c, llseek parts of configure.in.
+
+Peter Moulder: configure.in (other than llseek stuff).  tests/*.
+Changes specific to ext2 features sparse_super, compression.

@@ -1,0 +1,62 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## large-disk-display.dpatch by  Phillip Susi <psusi@cfl.rr.com>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Modern disks are so large that an entire block group can
+## DP: take up one block on the screen map.  This caused all blocks
+## DP: to be shown as B for bitmap, since every group contains a bitmap.
+## DP: This was not very helpful, so for larger disks, this patch
+## DP: will flag the blocks as used or free data blocks instead of B.
+
+@DPATCH@
+diff -urNad defrag-0.73pjm1~/display.c defrag-0.73pjm1/display.c
+--- defrag-0.73pjm1~/display.c	2008-10-21 11:28:00.000000000 -0400
++++ defrag-0.73pjm1/display.c	2008-10-21 11:28:26.000000000 -0400
+@@ -25,6 +25,8 @@
+    int voyer_mode = 1;
+ #endif
+ 
++extern unsigned int groups;
++
+ static WINDOW *map_w=NULL;
+ static WINDOW *legend=NULL,*stats=NULL, *st_line=NULL;
+ 
+@@ -347,7 +349,11 @@
+   int mask = 0;
+   int attr;
+   int glyph;
++  char bigdisk;
+   
++  if( (groups << 1) > screen_cells )
++    bigdisk = 1;
++  else bigdisk = 0;
+   if (screen_map[i] & AT_SELECTED && 
+      !(screen_map[i] & (AT_SUPER | AT_BITMAP | AT_INODE))) 
+          mask |= A_REVERSE;
+@@ -377,12 +383,12 @@
+       glyph = 'S';
+   }
+   
+-  else if (screen_map[i] & AT_BITMAP) {
++  else if (screen_map[i] & AT_BITMAP && !bigdisk) {
+       attr = CELL_ATTR (ATR_BITMAP);
+       glyph = 'M';
+   }
+   
+-  else if (screen_map[i] & AT_INODE) {
++  else if (screen_map[i] & AT_INODE && !bigdisk) {
+       attr = CELL_ATTR (ATR_INODE);
+       glyph = 'I';
+   }
+diff -urNad defrag-0.73pjm1~/ext2.c defrag-0.73pjm1/ext2.c
+--- defrag-0.73pjm1~/ext2.c	2008-10-21 11:28:01.000000000 -0400
++++ defrag-0.73pjm1/ext2.c	2008-10-21 11:28:01.000000000 -0400
+@@ -38,7 +38,7 @@
+ char const * program_name = "e2defrag";
+ char const * fsck = "e2fsck";
+ 
+-static unsigned groups;
++unsigned int groups;
+ struct ext2_group_desc *bg;
+ struct groups_population *gp;
+ 

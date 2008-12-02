@@ -1,0 +1,18 @@
+Source: defrag
+Section: admin
+Priority: extra
+Maintainer: Goswin von Brederlow <brederlo@informatik.uni-tuebingen.de>
+Standards-Version: 3.6.2.0
+Build-Depends: debhelper (>= 4.0.0), libncurses-dev, bzip2, e2fslibs-dev, dpatch, autoconf2.13, automake1.4
+
+Package: defrag
+Architecture: any
+Depends: ${shlibs:Depends}, file
+Description: ext2, minix and xiafs filesystem defragmenter
+ As a file system is used, data tends to become more and more
+ scattered across the disk, degrading performance.  A disk
+ defragmenter simply re-organises the data on the disk, so that
+ individual files occupy a single sequential set of disk blocks,
+ and all the free space on the disk is collected together in a
+ single region. This generally means that reading a whole file
+ is faster, and disk accesses in general are more efficient.

@@ -1,0 +1,62 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## fix-indirect-blocks-for-fixed-inodes.dpatch by Phillip Susi <psusi@cfl.rr.com>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Previously reserved inodes, such as the bad blocks inode, and the 
+## DP: journal inode would be marked as fixed ( unmovable ) but the
+## DP: indirect blocks pointing to the fixed blocks were not themselves
+## DP: marked as fixed.  This caused them to be relocated, only the
+## DP: inode was not updated to point to the new indirect block
+## DP: causing filesystem corruption.  Correcting this error allows the 
+## DP: journal inode to have its indirect blocks ( but not data blocks )
+## DP: optimized properly, but other nodes, like the resize inode, do
+## DP: not contain legitimate indirect blocks so optimizing them causes
+## DP: corruption.  For this reason, this patch simply marks all
+## DP: indirect blocks in a fixed inode as fixed
+
+@DPATCH@
+diff -urNad defrag-0.73pjm1~/defrag.c defrag-0.73pjm1/defrag.c
+--- defrag-0.73pjm1~/defrag.c	2001-07-04 07:08:13.000000000 -0400
++++ defrag-0.73pjm1/defrag.c	2006-11-16 21:09:49.337577000 -0500
+@@ -285,7 +285,12 @@
+         set_attr(*znr,AT_DATA);
+ 	if (mode == WZ_SCAN)
+ 		update_inode_average(*znr);
+-	
++	if( mode == WZ_FIXED_BLOCKS )
++	  {
++		mark_fixed(*znr);
++		set_attr(*znr,AT_BAD);
++		badblocks++;
++	  }	
+ 	read_current_block(*znr, blk);
+ 
+         if (mode == WZ_REMAP) {
+@@ -329,7 +334,12 @@
+         set_attr(*znr,AT_DATA);
+ 	if (mode == WZ_SCAN)
+ 		update_inode_average(*znr);
+-	
++	if( mode == WZ_FIXED_BLOCKS )
++	  {
++		mark_fixed(*znr);
++		set_attr(*znr,AT_BAD);
++		badblocks++;
++	  }	
+ 	read_current_block(*znr, blk);
+ 	
+ 	if (mode == WZ_REMAP) {
+@@ -372,7 +382,12 @@
+         set_attr(*znr,AT_DATA);
+ 	if (mode == WZ_SCAN)
+ 		update_inode_average(*znr);
+-	
++	if( mode == WZ_FIXED_BLOCKS )
++	  {
++		mark_fixed(*znr);
++		set_attr(*znr,AT_BAD);
++		badblocks++;
++	  }		
+ 	read_current_block(*znr, blk);
+ 
+ 	if (mode == WZ_REMAP)

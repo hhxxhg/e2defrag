@@ -1,0 +1,5 @@
+# @configure_input@
+
+all check clean distclean install mostlyclean uninstall:
+	@echo "You need to use GNU make (version 3.70 or later)." >&2
+	@exit 1

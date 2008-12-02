@@ -1,0 +1,10 @@
+Note that these tests currently test only ext2 fs.  (See TODO for comments
+on how to implement.)
+
+
+nonroot.sh (built from nonroot.sh.in by ../configure) is for existing tests
+(i.e. which already have before/after filesystem images).
+
+To create new filesystem images, run testone.sh as root.  Unlike nonroot.sh,
+testone.sh probably needs to be run on a GNU/Linux system; e.g. must be able
+to mount a file using `-o loop'.

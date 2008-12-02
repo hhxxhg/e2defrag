@@ -1,0 +1,59 @@
+# @configure_input@
+
+SHELL = @SHELL@
+
+srcdir = @srcdir@
+VPATH = @srcdir@
+top_builddir = ..
+
+TESTS_ENVIRONMENT = sh -e ./nonroot.sh
+TESTS =  1M,1024,none 	1M,1024,sparse_super,filetype 	1M,2048,none 	1M,4096,sparse_super,filetype
+
+.SUFFIXES:
+
+all install uninstall:
+
+.PHONY: all check clean distclean install mostlyclean uninstall
+
+Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status $(BUILT_SOURCES)
+	cd $(top_builddir) \
+	  && CONFIG_FILES=tests/Makefile CONFIG_HEADERS= $(SHELL) ./config.status
+
+nonroot.sh: $(srcdir)/nonroot.sh.in $(top_builddir)/config.status
+	cd $(top_builddir) \
+	  && CONFIG_FILES=tests/nonroot.sh CONFIG_HEADERS= $(SHELL) ./config.status
+
+check: nonroot.sh
+#	# The test suire requires bzip2; check for it now instead of
+#	# looking like real failure.
+	@if :| bzip2 >/dev/null; then :; else \
+	  echo "The test suite requires bzip2 to be installed." >&2; \
+	  echo "<http://sources.redhat.com/bzip2/>" >&2; \
+	  exit 1; \
+	fi
+	@echo "Note: Currently only e2defrag is tested."
+	@failed=0; all=0; \
+	srcdir=$(srcdir); export srcdir; \
+	for tst in $(TESTS); do \
+	  if $(TESTS_ENVIRONMENT) $$tst; then \
+	    all=`expr $$all + 1`; \
+	    echo "PASS: $$tst"; \
+	  elif test $$? -ne 77; then \
+	    all=`expr $$all + 1`; \
+	    failed=`expr $$failed + 1`; \
+	    echo "FAIL: $$tst"; \
+	  fi; \
+	done; \
+	if test "$$failed" -eq 0; then \
+	  banner="All $$all tests passed"; \
+	else \
+	  banner="$$failed of $$all tests failed"; \
+	fi; \
+	dashes=`echo "$$banner" | sed s/./=/g`; \
+	echo "$$dashes"; \
+	echo "$$banner"; \
+	echo "$$dashes"; \
+	test "$$failed" -eq 0
+
+clean distclean mostlyclean:
+	rm -f test,*

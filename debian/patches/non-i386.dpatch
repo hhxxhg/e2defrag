@@ -1,0 +1,50 @@
+#!/bin/sh -e
+## non-i386.dpatch by Goswin von Brederlow <brederlo@informatik.uni-tuebingen.de>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: No description.
+
+if [ $# -lt 1 ]; then
+    echo >&2 "`basename $0`: script expects -patch|-unpatch as argument"
+    exit 1
+fi
+
+[ -f debian/patches/00patch-opts ] && . debian/patches/00patch-opts
+patch_opts="${patch_opts:--f --no-backup-if-mismatch}"
+
+case "$1" in
+       -patch) patch $patch_opts -p1 < $0;;
+       -unpatch) patch $patch_opts -p1 -R < $0;;
+        *)
+                echo >&2 "`basename $0`: script expects -patch|-unpatch as argument"
+                exit 1;;
+esac
+
+exit 0
+
+@DPATCH@
+--- defrag-0.73pjm1/ext2.c	2006-01-17 18:40:10.000000000 +0100
++++ defrag-0.73pjm1/ext2.c	2006-01-17 18:41:57.465843520 +0100
+@@ -245,7 +245,7 @@
+         for (i = 0; i < groups; i++) {
+                 pos = (loff_t) bg[i].bg_inode_bitmap * block_size;
+                 if (debug)
+-                        printf("Group:%d inode_bitmap at:%llu\n",i,pos);
++                        printf("Group:%d inode_bitmap at:%llu\n",i,(unsigned long long)pos);
+                 if (pos!=nlseek(IN,pos,SEEK_SET)) 
+                         die("seek failed reading inode bitmap");
+            
+--- defrag-0.73pjm1/e2dump.c	2006-01-17 18:45:35.000000000 +0100
++++ defrag-0.73pjm1/e2dump.c	2006-01-17 18:46:20.883797904 +0100
+@@ -79,9 +79,9 @@
+ static inline unsigned long bit_is_set(const void * addr, int nr)
+ {
+ # if powerpc
+-	return 1UL & (((const int *) addr)[nr >> 5] >> (nr & 31)));
++	return 1UL & (((const int *) addr)[nr >> 5] >> (nr & 31));
+ # else
+-	return 1UL & (((const unsigned char *) addr)[nr >> 3] >> (nr & 7)));
++	return 1UL & (((const unsigned char *) addr)[nr >> 3] >> (nr & 7));
+ # endif
+ }
+ #endif

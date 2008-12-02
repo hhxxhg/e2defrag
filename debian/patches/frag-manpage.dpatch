@@ -1,0 +1,44 @@
+#!/bin/sh -e
+## frag_manpage.dpatch by Timshel Knoll <timshel@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: No description.
+
+if [ $# -lt 1 ]; then
+    echo >&2 "`basename $0`: script expects -patch|-unpatch as argument"
+    exit 1
+fi
+
+[ -f debian/patches/00patch-opts ] && . debian/patches/00patch-opts
+patch_opts="${patch_opts:--f --no-backup-if-mismatch}"
+
+case "$1" in
+       -patch) patch $patch_opts -p1 < $0;;
+       -unpatch) patch $patch_opts -p1 -R < $0;;
+        *)
+                echo >&2 "`basename $0`: script expects -patch|-unpatch as argument"
+                exit 1;;
+esac
+
+exit 0
+
+@DPATCH@
+diff -urNad /home/timshel/src/debian/dpatch/tmp/defrag-0.73pjm1/frag.8 defrag-0.73pjm1/frag.8
+--- /home/timshel/src/debian/dpatch/tmp/defrag-0.73pjm1/frag.8	2001-07-04 21:08:13.000000000 +1000
++++ defrag-0.73pjm1/frag.8	2004-02-11 16:57:30.000000000 +1100
+@@ -4,7 +4,7 @@
+ .SH NAME
+ frag \- simple fragmentation checker
+ .SH SYNOPSIS
+-.B /etc/frag
++.B /sbin/frag
+ .B "[ \-l ] [ \-s [ \-s ]]"
+ filename ...
+ .SH DESCRIPTION
+@@ -66,4 +66,4 @@
+ don't cross filesys borders, get filesystem block size at runtime
+ .br
+ V1.4 by Stephen Tweedie, added indirect block support and improved
+-statistic summaries.  Added "-l" switch.
+\ No newline at end of file
++statistic summaries.  Added "-l" switch.

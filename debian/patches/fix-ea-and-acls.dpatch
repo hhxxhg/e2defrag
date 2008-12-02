@@ -1,0 +1,30 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## fix-ea-and-acls.dpatch by Phillip Susi <psusi@cfl.rr.com>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Previously defrag did not recognize acls and extended attributes
+## DP: which are stored in a data block pointed to by inode.i_file_acl
+## DP: and can be shared between inodes.  Because the block was never
+## DP: walked, it never was assigned a new location, so when it was
+## DP: replaced, it was never moved to a new block and so was lost.
+## DP: This patch fixes defrag to remap the ea block so that it is
+## DP: assigned a new location rather than being lost in the move.
+## DP: Because the block can be shared, after it is remapped once,
+## DP: it is marked as fixed to stop it from being moved again when
+## DP: other inodes that share it are walked.
+
+@DPATCH@
+diff -urNad defrag-0.73pjm1~/defrag.c defrag-0.73pjm1/defrag.c
+--- defrag-0.73pjm1~/defrag.c	2008-12-02 16:50:43.000000000 -0500
++++ defrag-0.73pjm1/defrag.c	2008-12-02 16:51:00.000000000 -0500
+@@ -411,6 +411,10 @@
+ {
+ 	int i;
+ 	
++#ifdef FS_IS_ext2
++	if( inode->i_file_acl )
++	  mark_fixed( inode->i_file_acl );
++#endif
+ 	for (i = 0; i < DIRECT_ZONES ; i++)
+ 	    walk_zone  ((Block *) ( i                 + inode->i_zone), mode);
+ 	walk_zone_ind  ((Block *) ( DIRECT_ZONES      + inode->i_zone), mode);

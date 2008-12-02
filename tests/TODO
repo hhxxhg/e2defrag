@@ -1,0 +1,32 @@
+large_file: need 4+ GB file.  (Could be sparse, though.)
+
+
+Add tests for filesystem types other than ext2.  Adding support for the others
+shouldn't be too hard.  Obviously need to search for mke2fs, e2fsck, tune2fs
+and adapt acordingly.  Probably need to change how scribble.sh creates
+fragmented files, too (i.e. re-taylor for the allocation policy of whatever
+fs).  Should rename fs-dependent scripts to have e2- prefix or something.  The
+fs image file naming scheme will need tweaking.
+
+
+Test on big-endian machine, preferably both powerpc and non-powerpc (see
+comment near top of e2dump.c).
+
+
+Create a fs image with really long file name (including several leading
+directories), and compile with checkergcc or other buffer-overrun checker.
+(ElectricFence probably wouldn't work, since it traps only malloc, and
+probably won't catch overrunning stack arrays.)  There are several places in
+defrag that use fixed-size buffers for formatting strings.
+
+
+Create filesystems that use ext2 compression.  (Unfortunately this requires
+appropriate kernel support whenever the images are regenerated using top.sh.)
+
+
+Try using an inode priority file.  (Hmm, how do we check that the priority
+requests were honoured?  Still, at least we'd have the tar & fs image cmp
+tests.)
+
+
+Go for code coverage generally.  (See gcov in the gcc documentation.)

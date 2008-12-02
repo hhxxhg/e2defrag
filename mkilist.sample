@@ -1,0 +1,72 @@
+#! /bin/bash
+#
+# This is a sample shell script to create an inode priority list for
+# defrag-0.4 or later.
+#
+# Note - it is designed to run on my own system, where /usr is mounted on
+# the root partition.  Defrag only runs on one partition at a time; if
+# you have a different partition setup then you may have to edit this script
+# to create inode lists for each partition separately.
+#
+# Stephen Tweedie, 1993 (sct@dcs.ed.ac.uk)
+
+# Command to list the inode numbers for a set of files
+listfiles ()
+{
+  ls -i $1|awk '{ print $1 }'
+}
+
+# Command to list the inode numbers for an entire directory subtree. Will
+# not cross mount-points.
+listdir ()
+{
+  dir=`dirname "$1"`
+  file=-name\ \"`basename "$1"`\"
+  if [ -d "$1" ] ; then
+    dir="$1"
+    file=-xdev
+  fi
+  find $dir -xdev $file -printf '%i\n'
+}
+
+# First the lilo boot program and map file...
+echo =100
+listfiles /etc/lilo/lilo
+echo =99
+listfiles /etc/lilo/map
+# Then the linux kernels :
+echo =97
+listfiles "/vmlinux*"
+# ... except that we give slightly higher priority to the
+# default kernel.
+echo =98
+listfiles /vmlinux /vmlinux.z
+
+# User directories come near the end, because they change rapidly.
+echo =-1
+listdir /home
+
+# /usr gets only slighty raised priority.  Binary files under /usr will
+# be re-prioritised below.
+echo =1
+listdir /usr
+
+# The system core binaries next.  We order these in groups to
+# try to keep related files together.
+echo =10
+listdir /lib /etc 
+echo =9
+listdir /bin
+echo =8
+listdir /usr/bin
+echo =7
+listdir /usr/X386
+echo =6
+listdir /usr/local/bin
+
+# Tmp files are way down the list.
+echo =-100
+# I have commented these out, because my own setup has /tmp on a separate
+# partition.
+#listdir /usr/tmp
+#listdir /tmp

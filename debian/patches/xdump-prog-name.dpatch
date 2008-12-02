@@ -1,0 +1,37 @@
+#!/bin/sh -e
+## xdump_name.dpatch by Timshel Knoll <timshel@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: No description.
+
+if [ $# -lt 1 ]; then
+    echo >&2 "`basename $0`: script expects -patch|-unpatch as argument"
+    exit 1
+fi
+
+[ -f debian/patches/00patch-opts ] && . debian/patches/00patch-opts
+patch_opts="${patch_opts:--f --no-backup-if-mismatch}"
+
+case "$1" in
+       -patch) patch $patch_opts -p1 < $0;;
+       -unpatch) patch $patch_opts -p1 -R < $0;;
+        *)
+                echo >&2 "`basename $0`: script expects -patch|-unpatch as argument"
+                exit 1;;
+esac
+
+exit 0
+
+@DPATCH@
+diff -urNad /home/timshel/src/debian/dpatch/tmp/defrag-0.73pjm1/xdump.c defrag-0.73pjm1/xdump.c
+--- /home/timshel/src/debian/dpatch/tmp/defrag-0.73pjm1/xdump.c	2001-07-04 21:08:14.000000000 +1000
++++ defrag-0.73pjm1/xdump.c	2004-02-11 16:57:12.000000000 +1100
+@@ -597,7 +597,7 @@
+ 
+ static void usage(void)
+ {
+-   printf("Usage:e2dump [<option>] <device>\n");
++   printf("Usage:xdump [<option>] <device>\n");
+    printf("\t-s\t\tdumps superblock\n");
+    printf("\t-m\t\tdumps block allocation bitmaps in hex\n");
+    printf("\t-M\t\tdumps inode allocation bitmaps in hex\n");

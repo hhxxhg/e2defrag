@@ -1,0 +1,69 @@
+.\" Copyright 1992,1993,1994 Rickard E. Faith (faith@cs.unc.edu)
+.\" May be distributed under the GNU General Public License
+.TH FRAG 8 "26 May 1994" "Linux 1.00" "Linux Programmer's Manual"
+.SH NAME
+frag \- simple fragmentation checker
+.SH SYNOPSIS
+.B /etc/frag
+.B "[ \-l ] [ \-s [ \-s ]]"
+filename ...
+.SH DESCRIPTION
+.B frag
+will report the file system fragmentation on a specified
+.IR filename .
+If the
+.I filename
+is a directory,
+.B frag
+will recursively descend the directory.
+.SH OPTIONS
+.TP
+.B \-l
+Long mode.  Lists the start and end blocks of all fragments of each
+file scanned.
+.TP
+.B \-s
+Silent (may be set to 1 or 2).  The first
+.B \-s
+eliminates the file by file statistics, and just prints the 
+examined directories and a summary.  The second
+.B \-s
+eliminates the printing of the directories, and just prints a
+summary.  This option is useful when
+.B frag
+is used on a directory.
+.SH "SEE ALSO"
+.BR e2dump (8),
+.BR xdump (8),
+.BR defrag (8),
+.BR mkfs (8),
+.BR fsck (8),
+.BR mkefs (8),
+.BR efsck (8)
+.SH BUGS
+.B frag
+will get caught in an infinite loop in the /proc filesystem.
+
+It is impossible to determine where a file's meta-data resides on disk
+simply by accessing the mounted file, so some apparent fragments
+reported by
+.B frag
+may be simply the result of low-level index blocks on disk.  The
+.B e2dump
+and
+.B xdump
+programs can interrogate a partition directly to access this data and
+to give more accurate results.
+
+.SH AUTHORS
+V1.0 by Werner Almesberger
+.br
+V1.1 by Steffen Zahn, adding directory recursion
+.br
+V1.2 by Rob Hooft, adding hole counts
+.br
+V1.3 by Steffen Zahn, ignore symlinks,
+don't cross filesys borders, get filesystem block size at runtime
+.br
+V1.4 by Stephen Tweedie, added indirect block support and improved
+statistic summaries.  Added "-l" switch.

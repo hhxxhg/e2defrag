@@ -1,0 +1,72 @@
+.TH E2DUMP 8 "Version 0.73pjm1   23 Apr 2003" defrag "Defrag Manuals"
+.SH NAME
+e2dump - dump details of filesystems.
+.SH SYNOPSIS
+.B e2defrag
+[
+.B -sgmfG
+] [
+.B -b
+.I block-number
+] [
+.B -i
+.I inode-number
+] [
+.B -n 
+.I file
+]
+.I /dev/name
+
+.SH DESCRIPTION
+.I e2defrag 
+will dump details of a second extended (ext2) file system to the screen.
+
+.SH OPTIONS
+.TP
+.B -s
+Dumps the superblock.
+.TP
+.B -g
+Dumps the groups tables.
+.TP
+.B -m
+Dumps the block allocation bitmaps in hexadecimal.
+.TP
+.B -f
+Prints some statistic for all fragmented files on the device
+.TP
+.B -G
+Prints group usage statistic.
+.TP
+.B -d
+Displays a picture of the device allocation (set by default if no other options are set).
+.TP
+.BI -b " block-number"
+Dumps the contents of the block \fIblock-number\fP.
+.TP
+.BI -i " inode-number"
+Dumps the inde data and allocation chain of inode \fIinode-number\fP
+.TP
+.BI -n " file"
+Dumps the inode data and allocation chain of the inode associated
+with \fIfile\fP.
+.SH "SEE ALSO"
+.BR defrag (8),
+.BR mkfs (8),
+.BR fsck (8),
+.BR mkefs (8),
+.BR efsck (8),
+.BR mke2fs (8),
+.BR e2fsck (8)
+.SH AUTHORS
+.LP
+Written by Stephen Tweedie.  Adaptation for the xia, ext2 filesystem
+and the picture option are done by Alexey Vovenko and Ulrich Habel.  
+Much of the initial version was developed from the
+.I fsck
+and
+.I efsck
+programs by Linus Torvalds and Remy Card.
+
+Send bug reports, fixes, improvements, comments and fan-mail to
+sct@dcs.ed.ac.uk.

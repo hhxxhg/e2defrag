@@ -1,0 +1,12 @@
+Endianness: make sure that it runs OK on non-little-endian machines,
+such as 68k, powerpc.
+
+
+Find out about the btree_dir feature.  I suspect this feature can be
+supported with zero code change (other than adding
+EXT2_FEATURE_RO_COMPAT_BTREE_DIR to set of supported ro_features).
+However, current mainstream kernels (2.4.0) and e2fsprogs (1.19) don't
+really use this feature, so it's hard to be sure what's needed.
+
+
+See also tests/TODO.

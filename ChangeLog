@@ -1,0 +1,405 @@
+2001-04-30  Peter Moulder  <pjm@bofh.asn.au>
+
+	* configure.in, defrag.spec, defrag.8, NEWS, README: Bump version to 0.73pjm1
+
+	* GNUmakefile.in: Rename from Makefile.  Add autoconf magic.
+
+	* GNUmakefile.in, defrag.h, defrag.c, display.c: Change EXTFS,
+	EXT2FS, MINIX, MINIXFS, XIAFS preprocessor symbols to
+	FS_IS_{ext,ext2,minix,xia}, to ease automation.
+
+	* buffers.c, defrag.c: Comment out `#include <string.h>', since
+	it conflicts with Linux kernel headers.
+
+	* display-plain.c: Reorder to match display.c (for easier diffs
+	between them).
+
+	* e2dump.c: Changes necessary for 64-bit systems.  Reject
+	filesystem if unsupported features.  Add trailing newline to die()
+	argument.  Started work on supporting >1k blocks, large_file,
+	non-i386 architectures.
+
+	* ext2.c: Remove references to NORM_FIRSTDATA.  Change to work
+	with any s_first_data_block.  s/moveable/movable/ (as per
+	/usr/dict/words), including in printf's.  (show_reserved_blocks):
+	fix group descriptor display bug.  Work with sparse_super.
+
+	* ext2.h: (FIRST_USER_INODE): Fix to use real superblock instead
+	of unused variable yielding a constant zero.
+
+Sun Jan 25 13:52:16 1998  Stephen C. Tweedie  <linux@dax>
+
+	* defrag.spec, defrag.8, NEWS, Makefile, README: Bump version to 0.73
+
+	* ext2.c, buffers.c:
+	Fixed missing 64-bit typecasts for >4GB filesystems
+
+	* Attic/CHANGES: Removed obsolete changelog file
+
+Thu Oct  9 20:15:13 1997  Stephen C. Tweedie  <linux@dax>
+
+	* Makefile, NEWS, README, defrag.spec, INSTALL:
+	Pre-release of defrag-0.71
+
+	* ext2.c: Use 64-bit arithmetic throughout when calculating offsets to
+	bitmap blocks.
+
+Thu Oct  9 20:15:13 1997  Stephen C. Tweedie  <linux@dax>
+
+	* Makefile, NEWS, README, defrag.spec, INSTALL:
+	Pre-release of defrag-0.71
+
+	* ext2.c: Use 64-bit arithmetic throughout when calculating offsets to
+	bitmap blocks.
+
+Thu Oct  9 20:13:49 1997  Stephen C. Tweedie  <sct@dcs.ed.ac.uk>
+
+	* Makefile, NEWS, README, defrag.spec, INSTALL:
+	Pre-release of defrag-0.71
+
+	* ext2.c: Use 64-bit arithmetic throughout when calculating offsets to
+	bitmap blocks.
+
+Sun Aug 17 14:36:06 1997  Stephen C. Tweedie  <sct@dcs.ed.ac.uk>
+
+	* types.h:
+	Add types.h to share declarations between e2defrag and e2dump
+
+	* ChangeLog, NEWS: Release 0.70
+
+	* ext2.c, display.h, display.c, buffers.c: Update copyrights
+
+	* ext2.c:
+	Add sanity check when we open the device to be sure that llseek() is
+	working before we proceed.
+
+	* defrag.c: Update copyright
+
+	* Makefile:
+	Update location of the etags command.  It is no longer hidden away by
+	recent emacsen.
+
+	* INSTALL: Add note about llseek()
+
+	* display.h, display.c:
+	Tidy up colour support and adapt colour scheme for my own tastes.
+	Less glare this way. :)
+
+	* defrag.8:
+	Update version number and add note about default pool sizes.
+
+	* llseek.c:
+	Import Ted Ts'o's llseek front end from e2fsprogs and adapt for defrag.
+
+	* misc.c, e2dump.c, defrag.h, buffers.c:
+	Add llseek 64 bit access support for partitions >2GB.
+
+	* Makefile: Tidy up Makefile.
+
+	Add "make changes" target to update ChangeLog from CVS logs.
+
+Sun Aug 17 14:33:04 1997  Stephen C. Tweedie  <sct@dcs.ed.ac.uk>
+
+	* NEWS: Release 0.70
+
+	* ext2.c, display.h, display.c, buffers.c: Update copyrights
+
+	* ext2.c:
+	Add sanity check when we open the device to be sure that llseek() is
+	working before we proceed.
+
+	* defrag.c: Update copyright
+
+	* Makefile:
+	Update location of the etags command.  It is no longer hidden away by
+	recent emacsen.
+
+	* INSTALL: Add note about llseek()
+
+	* display.h, display.c:
+	Tidy up colour support and adapt colour scheme for my own tastes.
+	Less glare this way. :)
+
+	* defrag.8:
+	Update version number and add note about default pool sizes.
+
+	* llseek.c:
+	Import Ted Ts'o's llseek front end from e2fsprogs and adapt for defrag.
+
+	* misc.c, e2dump.c, defrag.h, buffers.c:
+	Add llseek 64 bit access support for partitions >2GB.
+
+	* Makefile: Tidy up Makefile.
+
+	Add "make changes" target to update ChangeLog from CVS logs.
+
+Sun Aug 17 14:24:23 1997  Stephen C. Tweedie  <sct@dcs.ed.ac.uk>
+
+	* ext2.c:
+	Add sanity check when we open the device to be sure that llseek() is
+	working before we proceed.
+
+	* defrag.c: Update copyright
+
+	* Makefile:
+	Update location of the etags command.  It is no longer hidden away by
+	recent emacsen.
+
+	* INSTALL: Add note about llseek()
+
+	* display.h, display.c:
+	Tidy up colour support and adapt colour scheme for my own tastes.
+	Less glare this way. :)
+
+	* defrag.8:
+	Update version number and add note about default pool sizes.
+
+	* llseek.c:
+	Import Ted Ts'o's llseek front end from e2fsprogs and adapt for defrag.
+
+	* misc.c, e2dump.c, defrag.h, buffers.c:
+	Add llseek 64 bit access support for partitions >2GB.
+
+	* Makefile: 
+	Tidy up Makefile.
+
+	Add "make changes" target to update ChangeLog from CVS logs.
+
+Sun Aug 17 14:03:55 1997  Stephen C. Tweedie  <sct@dcs.ed.ac.uk>
+
+	* llseek.c:
+	Import Ted Ts'o's llseek front end from e2fsprogs and adapt for defrag.
+
+	* misc.c, e2dump.c, defrag.h, buffers.c:
+	Add llseek 64 bit access support for partitions >2GB.
+
+	* Makefile: Tidy up Makefile.
+
+	Add "make changes" target to update ChangeLog from CVS logs.
+
+Sun Aug 10 16:32:10 1997  Stephen C. Tweedie  <sct@dcs.ed.ac.uk>
+
+	* defrag.h, display-plain.c, display.c, Makefile:
+
+	Add e2defrag.static target statically linked with no ncurses support,
+	for use on rescue or root disks.
+
+Sat Aug  9 23:44:37 1997  Stephen C. Tweedie  <sct@dcs.ed.ac.uk>
+
+	* minix.h, misc.c, xia.c, xia.h, ext.h, ext2.c, ext2.h, frag.8,
+ 	minix.c, defrag.h, display.c, display.h, e2dump.c, ext.c, README,
+ 	buffers.c, defrag.8, defrag.c, ChangeLog, INSTALL, Makefile, NEWS:
+ 	Import Ulrich Habel's colour support
+
+Sat Jul 26 09:54:40 1997  Ulrich E. Habel  (espero@b31.hadiko.de)
+
+	* Release 0.62
+	Blocksize-resolving updated for current kernel.
+        Colorized screen.
+	Bug fixed in valid-recognition of partition.
+	Many typecasts added, no more warnings yet.
+	Cleaning the screen when waiting for a keystroke stopped with a
+	  trick: 'getchar()' instead of 'getch()' used.    :-(
+	  Does anybody know why this happens?
+
+Tue Jul 12 13:37:41 1994  Stephen C. Tweedie  (sct@dcs.ed.ac.uk)
+
+	* NEWS: Prepare for 0.6 release.
+
+	* xia.h, xia.c, defrag.c: Updated RCS headers.
+
+	* Makefile: Updated "make tags" and "make spotless".
+
+	Generate version.h automatically from version number in Makefile.
+
+	* terminfo/c/console: removed ACS_DIAMOND for newer kernels
+
+	* INSTALL: Updated description of make debug and make install.
+
+	Added note for terminfo-1.8.5: the linux console terminfo description
+	is incompatibile with new kernels.
+
+	* README: Added a few notes on ext2fs performance.
+
+Sun Jul 10 01:15:10 1994  Stephen C. Tweedie  (sct@dcs.ed.ac.uk)
+
+	* ext2.c (count_free_blocks): Fixed calculation of size of last group
+
+Sat Jun 25 17:13:36 1994  Stephen C. Tweedie  (sct@dcs.ed.ac.uk)
+
+	* Makefile: Create qmagic executables by default.
+
+Thu May 26 16:22:56 1994  Stephen C. Tweedie  (sct@dcs.ed.ac.uk)
+
+	* frag.8: Initial revision
+
+Thu May 26 13:37:43 1994  Stephen C. Tweedie  (sct@dcs.ed.ac.uk)
+
+	* README: Updated documentation for version 0.6.
+
+	* Makefile: Added install target.
+
+	* frag.c, defrag.8: Added documentation for "-l" switch.
+
+	* NEWS: Initial revision
+
+	* ext2.c: Minor updates to comments only.
+
+	* frag.c: Added inter-gap-distance and overall fragmentation to summary
+	statistics.
+
+Thu May 26 12:47:47 1994  Stephen C. Tweedie  (sct@dcs.ed.ac.uk)
+
+	* frag.c: Initial revision
+
+Thu May 26 11:39:38 1994  Stephen C. Tweedie  (sct@dcs.ed.ac.uk)
+
+	* Makefile:
+	Changed make depend to avoid referring to intermediate object files.
+
+	* Makefile:
+	Default compiler options are now set to optimize, not debug.  Use
+	"make DEBUG=true" to make debugging code.
+
+Thu May 26 11:04:01 1994  Stephen C. Tweedie  (sct@dcs.ed.ac.uk)
+
+	* defrag.h:
+	Worked around "xxx defined but never used" warnings for bitop
+	functions in defrag.h
+
+	* ext2.c, display.c, defrag.c:
+	Fixed "-n" mode for e2defrag and added extra information output for
+	"e2defrag -n -s".
+
+	* Makefile: Rewrote "make depend".
+
+	* Makefile: Restored e2dump and xdump in reorganised Makefile.
+
+	* xdump.c, e2dump.c:
+	Fixed printf format descriptors to eliminate compiler warnings under
+	gcc-2.5.
+
+	* e2dump.c (init_block_list): Fixed pointer bug in list initialisation.
+
+Wed May 25 15:32:35 1994  Stephen C. Tweedie  (sct@dcs.ed.ac.uk)
+
+	* display.c: Whoops - accidentally deleted a single hash character.
+
+	* defrag.8: Cosmetic changes.
+
+	* defrag.c: Merge changes from Alexey's release 0.5
+	* defrag.8: Merge changes from Alexey's release 0.5
+	* CHANGES: Merge changes from Alexey's release 0.5
+
+Sun May 22 22:59:28 1994  Stephen C. Tweedie  (sct@dcs.ed.ac.uk)
+
+	* Makefile:
+	Major changes - now collect together object files for different
+	filesystems into different library archive files.
+
+Jan 1994  Alexey Vovenko
+
+	* Added picture option
+
+19 Dec 1994  Alexey Vovenko
+
+	* Added Ext2, Xia FS support,
+	  added separate program e2dump - a fragmentation report tool.
+	  Found a bug in a minix FS.
+
+6 Apr 1993  Stephen C. Tweedie
+
+	* Public release 0.4
+
+5 Apr 1993  Stephen C. Tweedie
+
+	* Added memory-efficient inode table lookup.
+
+4 Apr 1993  Stephen C. Tweedie
+
+	* Finished sample make-inode script in mkilist.sample
+
+30 Mar 1993  Stephen C. Tweedie
+
+	* Added "-i" option, giving the ability to sort inodes in
+	arbitrary order using an inode priority file.
+
+22 Mar 1993:
+
+	* Improved recovery from IO errors during defragmentation.
+
+19 Mar 1993:
+
+	* Added recognition of nonstandard bad-block inodes (especially
+	for minix fs).
+
+6 Jan 1993:
+
+	* Public Release 0.3b
+	Emergency release - fixed major bug in extfs bad-block handling
+	code. Still no bad block handling for minix-fs.
+
+24 Dec 1992:
+
+	* Added defrag.8 man page.
+
+23 Dec 1992:
+
+	* Development Version 0.3a
+
+	Added minix support - I hope.
+
+	There are now two programs, defrag and edefrag, compiled largely
+	from the same sources but with different #defines.  The object
+	files produced for each version are incompatible, and the Makefile
+	now properly handles multiple recompilation of each source file
+	where necessary to produce two separate object files.
+
+	-v no longer produces reams of inode progress report; -vv still
+	does, however (and now also lists total blocks per inode).
+
+	Tidied up the -vv relocation reporting.
+
+21 Dec 1992:
+
+	* Public Release 0.2
+
+	Added CHANGELOG, README, INSTALL files.
+	Increased default buffer pool.
+	Removed redundant -l option.
+
+19 Dec 1992:
+
+	* Pre-alpha Release 0.2
+
+	Improvements over release 0.1:
+	Improved handling of -v, -s and -l switches.
+	Added -DNODEBUG to disable debugging features (and assertions).
+	Now sorts inodes sensibly before reallocating data.
+	Data relocation is now highly optimised with buffered and sorted
+	reads/writes.
+	User-configurable buffer pool size.
+	Added -r (readonly) option for testing and confidence.  Supplies
+	an estimate of how hard the defragmenter will have to work.
+	Still no minix-fs support.
+
+13 Dec 1992:
+
+	* Tidy of release 0.1.
+	Added option help to usage error message.
+	Added better version information with version.h.
+	Moved buffer management to buffers.c
+
+12 Dec 1992:
+
+	* Release 0.1
+
+	Linux disc defragmenter release 0.1 committed to CVS
+	No optimisation; no buffering; no Minix-fs support.
+	First semi-public release.
+
+3 Dec 1992:
+
+	* Initial revision
+	Original version derived from efsck 0.9 alpha by Remy Card and Linus
+	Torvalds.

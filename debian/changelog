@@ -1,0 +1,219 @@
+defrag (0.73pjm1-8ubuntu2) gutsy; urgency=low
+
+  * modern-inodes.dpatch: Updated refernces to changed inode fields.
+  * large-disk-display.dpatch: Fixed issue where large disks would
+    display all or most blocks as B for bitmap instead of used or
+    free data blocks.
+  * Disabled minix support.
+  * fix-ea-and-acls.dpatch: Fixed to work properly with acls and other
+    extended attributes.
+  * disable-dump.dpatch: Disabled the building of e2dump.
+
+ -- Phillip Susi <psusi@cfl.rr.com>  Mon, 20 Oct 2008 17:29:43 -0400
+
+defrag (0.73pjm1-8ubuntu1) feisty; urgency=low
+
+  * fix-ctime-warnings.dpatch: Fixes some warnings causing build failure
+    and possibly incorrect behavior if time_t is not 32 bits
+  * Disabled ext3-notwork.dpatch
+  * fix-indirect-blocks-for-fixed-inodes.dpatch: Marks indirect blocks
+    belonging to fixed inodes as fixed.  This fixes a bug that corrupted
+    filesystems with reserved inodes, such as the ext3 journal.
+  * allow-ext3-journal-move.dpatch: Allows the data blocks of the ext3
+    journal inode to be moved instead of treating them as fixed because
+    it is a reserved inode
+  * boost-pool-size.dpatch: Increases the default buffer size from 2 MB
+    to 32 MB for better performance on modern machines
+
+ -- Phillip Susi <psusi@cfl.rr.com>  Wed, 15 Nov 2006 14:14:38 -0500
+
+defrag (0.73pjm1-8) unstable; urgency=low
+
+  * ext3-notwork.dpatch: reverse testcase (Closes: #310800)
+  * non-i386.dpatch: Fix format for printf problem and erroneous )
+  * e2fslibs-not-lkh.dpatch: include types.h first to avoid redefinitions
+  * gcc-4.0.dpatch: Fix wrong signdness error and deprecated sigsetmask
+  * packaging:
+    + udpate to debhelper 4
+    + update to standards version 3.6.2
+    + set Architecture: any to gather build failure reports for all archs
+    + update Free Software Foundation address in copyright file
+
+ -- Goswin von Brederlow <brederlo@informatik.uni-tuebingen.de>  Fri, 20 Jan 2006 16:17:13 +0100
+
+defrag (0.73pjm1-7) unstable; urgency=low
+
+  * Adopting package with maintainers consent (Closes: #249830)
+  * Updating policy version to 3.6.1.0
+
+ -- Goswin von Brederlow <brederlo@informatik.uni-tuebingen.de>  Thu, 27 May 2004 21:39:05 +0200
+
+defrag (0.73pjm1-6) unstable; urgency=low
+
+  * Added build-depends on autoconf2.13 and automake1.4 (closes: #233155)
+
+ -- Timshel Knoll-Miller <timshel@debian.org>  Mon, 23 Feb 2004 08:06:11 +1100
+
+defrag (0.73pjm1-5) unstable; urgency=low
+
+  * dpatch-ised defrag!
+  * Use e2fslibs-dev ext2_fs.h rather than linux kernel headers directly
+    (closes: #225822)
+  * Fixed documentation of fsck syntax for checking bad blocks
+    (closes: #225990)
+
+ -- Timshel Knoll <timshel@debian.org>  Wed, 11 Feb 2004 17:31:57 +1100
+
+defrag (0.73pjm1-4) unstable; urgency=low
+
+  * Patched to build with missing kernel minix.h header (closes: #223145)
+    Thanks to Roberto Lumbreras <rover@debian.org>
+
+ -- Timshel Knoll <timshel@debian.org>  Fri, 19 Dec 2003 01:35:38 +1100
+
+defrag (0.73pjm1-3) unstable; urgency=low
+
+  * Make xdump print its own name in help message, not e2dump (closes: #169585)
+  * Make defrag depend on file (closes: #146903)
+  * Fix gcc 3.2 compilation errors (thanks to Daniel Schepler)
+    (closes: #189562)
+  * Upgraded to policy 3.5.9, included building with gcc's -g flag by default
+  * Added manpage e2dump.8 (closes: #70579)
+    - Also Build-Depend on debhelper (>= 3) for dh_installman and are now
+      using DH_COMPAT=3
+
+ -- Timshel Knoll <timshel@debian.org>  Wed, 23 Apr 2003 12:01:22 +1000
+
+defrag (0.73pjm1-2) unstable; urgency=low
+
+  * debian/control: fixed speling erorr (closes: #124541)
+  * debian/copyright: fixed mis-spelling common-licences -> common-licenses
+  * ext2.c: Gracefully fail on filesystems with journals (closes: #118635)
+
+ -- Timshel Knoll <timshel@debian.org>  Sun, 27 Oct 2002 11:48:30 +1100
+
+defrag (0.73pjm1-1) unstable; urgency=low
+
+  * New upstream release, by Peter J. Moulder <pjm@bofh.asn.au>:
+    o Builds with current libc6-dev.
+    o Support >1k block sizes (closes: #48458, #62556).
+    o Support sparse_super and ext2 compression.
+    o Reject ext2 filesystems that have unsupported features.
+    o Uses autoconf.
+    o Installs into /usr/sbin instead of /sbin.  (This is more conformant
+      with FHS.)
+    o Minix defrag now called mdefrag.
+    o Manpage symlinks created.
+    o (hopefully this release will be numbered 0.74 after contact with
+      Stephen Tweedie ...)
+  * Lots of packaging changes thanks to Peter as well:
+    o debian/rules:
+      support for DEB_BUILD_OPTIONS (including noopt to disable -O2)
+    o debian/control: Build-Depends: debhelper (>= 2.0.40)
+      Standards-Version 3.5.2
+    o debian/dirs: No longer required, removed ...
+    o debian/docs: INSTALL file removed from package
+  * debian/control:
+    o Architecture: i386 just to be safe for the moment
+    o fixed typo in Build-Depends: dephelper -> debhelper (closes: #102009)
+    o Build-Depends: bzip2 for test suite ...
+  * Fixed reference to '/etc/frag' from frag(8), this now refers
+    to /sbin/frag (closes: #66834, #66835)
+  * These llseek bugs *should* be fixed ... (closes: #19998, #44025, #60868)
+
+ -- Timshel Knoll <timshel@debian.org>  Thu,  5 Jul 2001 00:15:04 +1000
+
+defrag (0.73-2) unstable; urgency=low
+
+  * Packaging taken over by Timshel Knoll <timshel@debian.org>
+  * Re-packaged from scratch. Found pristine sources on web and built
+    with .orig.tar.gz & .diff.gz (0.73-1 was just a .tar.gz)
+    (closes: Bug#44165)
+  * Merged in Adam Heath's changes one by one, with a brief comment for
+    each one.
+  * Policy 3.1.1 (added Build-Depends:) 
+  * Priority: optional (doesn't need to be `extra')
+  * Removed edefrag and xdefrag from the package: the extended and xia
+    filesystems are no longer supported by the kernel.
+  * Incorporated Paul Slootman's alpha diffs (closes: Bug#22209)
+  * Undocumented binary e2dump - filed bug and symlinked.
+
+ -- Timshel Knoll <timshel@debian.org>  Wed, 30 Aug 2000 23:57:50 +1100
+
+defrag (0.73-1.1) frozen unstable; urgency=low
+
+  * nonmaintainer upload for Alpha
+  * compilation of i386 asm segments made conditional, and added alpha code.
+
+ -- Paul Slootman <paul@debian.org>  Mon, 20 Apr 1998 23:05:11 +0200
+
+defrag (0.73-1) frozen unstable; urgency=low
+
+  * Fix for bug 17136 didn't work.  Proper solution is include
+    <sys/param.h> in defrag.h
+  * Fixed problem with llseek, didn't call built in wrapper
+    function.  (Fixes: Bug#19998)
+  * New upstream release.
+
+ -- Adam Heath <adam.heath@usa.net>  Sun, 22 Mar 1998 05:06:43 -0500
+
+defrag (0.70-6) unstable; urgency=low
+
+  * Switched to debhelper.
+
+ -- Adam Heath <adam.heath@usa.net>  Sat, 14 Mar 1998 20:35:28 -0500
+
+defrag (0.70-5) unstable; urgency=low
+
+  * Fix Lintian errors.
+
+ -- Adam Heath <adam.heath@usa.net>  Sun,  8 Mar 1998 23:37:12 -0500
+
+defrag (0.70-4) unstable; urgency=low
+
+  * LLSEEK not declared in libc6 headers.  Added to defrag.h
+      to fix 17135.
+  * Borrowed macros from selectbits.h to allow compilation on
+      non-ix86 machines.  Fixes bug 17136.
+
+ -- Adam Heath <adam.heath@usa.net>  Fri, 16 Jan 1998 01:49:29 -0500
+
+defrag (0.70-3) unstable; urgency=low
+
+  * debstd solves #15445
+  * Bug#15522 supposedly fixed in -1
+
+ -- Adam Heath <adam.heath@usa.net>  Wed, 31 Dec 1997 00:35:12 -0500
+
+defrag (0.70-2) unstable; urgency=low
+
+  * Build with hamm.
+  * debstd solves #9665
+
+ -- Christoph Lameter <clameter@waterf.org>  Thu,  4 Sep 1997 15:47:03 -0700
+
+defrag (0.70-1) unstable stable; urgency=low
+
+  * Added a few comments to README.debian re frequent gotcha's with
+    defrag.
+  * Fixes for >2G partitions.
+  * New upstream release
+
+ -- Christoph Lameter <clameter@waterf.org>  Tue, 19 Aug 1997 15:33:21 -0700
+
+defrag (0.61-1) unstable; urgency=low
+
+  * Upstream update. defrag can now actually be build on a current Linux
+    system!
+
+ -- Christoph Lameter <clameter@waterf.org>  Mon, 10 Feb 1997 19:34:17 -0800
+
+defrag (0.6-1) unstable; urgency=low
+
+  * Initial Release.
+
+ -- Christoph Lameter <clameter@waterf.org>  Tue, 5 Nov 1996 20:09:21 -0800
+
+Local variables:
+mode: debian-changelog
+End:

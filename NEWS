@@ -1,0 +1,75 @@
+Public defrag release 0.73pjm1
+
+NEWS
+====
+
+New in 0.73pjm1:
+
+Uses configure script.  Default location for binaries now ${prefix}/sbin
+(where ${prefix} defaults to /usr/local).
+
+Makefile more GNU standards compliant (but still requires GNU make).
+
+e2defrag-specific news:
+
+ - Support blocksizes bigger than 1k.
+ - Accepts the following ext2 features: sparse_super, filetype, large_file,
+   compression.
+ - Checks the feature flags in the superblock, rejecting if any unknown
+   features used.
+ - Test suite available with `make check'.  (Requires bzip2.)
+ - Attempt to support architectures other than i386.  However, support
+   for big-endian architectures is still primitive (see BUGS section
+   in defrag.8 man page).  You should definitely run the test suite
+   (`make check') if compiling on other than ix86 GNU/Linux.
+
+
+New in 0.73:
+
+Fixed access to ext2fs metadata on filesystems >4GB.
+
+New in 0.71:
+
+Added spec file for rpm packaging.
+
+New in 0.70:
+
+Tidied up colour support and attributes for fragmented blocks.
+
+Added 64 bit device access support to allow use on filesystems >2GB.
+
+Added a new e2defrag.static target with no graphic display support for
+use on root floppies (for those who want to defragment their root
+filesystem).
+
+New in 0.62:
+
+Thanks to Ulrich E. Habel (espero@b31.hadiko.de) for this update:
+
+Picture mode is now colorized. Now ext2 V2 Inode-informations are read from
+the Linux-Includes. A bug fixed in valid-check of filesystem.  
+
+New in 0.6:
+
+New in 0.5 <development release>:
+
+Just bug fixes and updated documentation.  The Makefile is now
+organised more sensibly.
+
+New in 0.4:
+
+A big thank-you to Alexey Vovenko for the ext2fs and xiafs support,
+and for the picture mode.  defrag now needs ncurses to compile.
+Additional programs xdump and e2dump provide graphical summary of disk
+usage on those filesystems.
+
+Also included a modified "frag" program to report on filesystem
+fragmentation.  Improvements include better catering for indirect blocks
+within a file and better summary statistics.  "e2dump -f" reports more
+accurate statistics if you have read access to the filesystem's block
+device.
+
+New in 0.3:
+
+Inode sorting by arbitrary inode priority and badblocks for minix
+filesystems are now supported.

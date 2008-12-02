@@ -1,0 +1,47 @@
+#! /bin/sh
+# @configure_input@
+
+# defrag: a quick hack to run the correct one of
+# {edefrag,e2defrag,mdefrag,xdefrag}.
+
+# TODO: Replace this by a C program, so that we don't need to depend
+# on `file'.  (Alternatively, we could perhaps use dd/tr.)
+
+set -e
+
+eval 'dev=$'$#
+
+transform='@program_transform_name@'
+edefrag="`echo edefrag|sed \"$transform\"`"
+e2defrag="`echo e2defrag|sed \"$transform\"`"
+mdefrag="`echo mdefrag|sed \"$transform\"`"
+xdefrag="`echo xdefrag|sed \"$transform\"`"
+
+case "$dev" in
+  --version)
+    echo "defrag @VERSION@"
+    exit 0
+    ;;
+  --help)
+    echo "Usage: $0 [OPTIONS] /dev/name"
+    echo "(More information available by running $e2defrag (etc.) directly.)"
+    exit 0
+    ;;
+  -*)
+    echo "Usage: $0 [OPTIONS] /dev/name" >&2
+    exit 1
+    ;;
+esac
+
+info="`file \"$dev\"`"
+if echo "$info" | grep -iw minix > /dev/null; then
+  exec "$mdefrag" "$@"
+elif echo "$info" | grep -iw ext2 > /dev/null; then
+  exec "$e2defrag" "$@"
+else
+  echo "Couldn't determine filesystem type; please run the appropriate" >&2
+  echo "defragmenter ($e2defrag, $edefrag, $xdefrag, $mdefrag) directly." >&2
+  exit 1
+fi
+echo "$0: Programming error (can't get here)." >&2
+exit 1

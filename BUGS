@@ -1,0 +1,17 @@
+Bugs:
+    1. The relocation algorithm is not stable for ext2 fs. That is
+    that if you run e2defrag on a recently defragmented filesystem,
+    it will rearrange some files, not improving the fragmentation
+    level. You can run it more and more times, it will move some files 
+    forth and back without any further improvements. 
+    
+    2. Picture can be broken, if the program had been suspended with ^Z and 
+    resumed after that.
+
+    3. Ncurses package does not work well with all terminfo databases.
+    It requires its own version of the database.
+    
+    4. Endianness probably still wrong when running on some big-endian
+    machines even if the filesystem has been swabbed to host-endian format
+    by e2fsck.  (Bitmaps in particular may be wrong.)
+    Endianness hasn't even been looked at for other than ext2fs.

@@ -1,0 +1,241 @@
+# @configure_input@
+
+# Makefile for defrag, the Linux filesystem defragmenter
+#
+# Copyright (C) 1992, 1993, 1994, 1997 Stephen Tweedie (sct@dcs.ed.ac.uk)
+# This file may be distributed under the terms of the GNU
+# General Public License. 
+#
+# Note - you need GNU make version 3.70 or later to run this makefile.
+
+VERSION = @VERSION@
+
+srcdir = @srcdir@
+VPATH = @srcdir@
+
+SHELL = @SHELL@
+CC = @CC@
+CPP = @CPP@
+CPPFLAGS = @CPPFLAGS@
+DEFS = @DEFS@
+CFLAGS = @CFLAGS@
+LDFLAGS = @LDFLAGS@
+# Uncomment the following line iff you want QMAGIC executables.
+#LDFLAGS:=$(LDFLAGS) -Xlinker -qmagic
+LIBS = @LIBS@
+
+RANLIB = @RANLIB@
+INSTALL = @INSTALL@
+INSTALL_DATA = @INSTALL_DATA@
+INSTALL_SCRIPT = @INSTALL_SCRIPT@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+LN_S = @LN_S@
+ETAGS = etags -T
+
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+datadir = @datadir@
+mandir = @mandir@
+man8dir = $(mandir)/man8
+sbindir = @sbindir@
+transform = @program_transform_name@
+man8ext = .8
+
+USE_minix = @USE_minix@
+USE_ext = @USE_ext@
+USE_ext2 = @USE_ext2@
+USE_xia = @USE_xia@
+
+# In modern versions of glibc, defining _FILE_OFFSET_BITS as 64 makes
+# off_t 64 bits, and things like open and lseek should work fine on
+# >=2GB filesystems even on 32-bit CPUs (so long as the kernel
+# supports that; added to Linux in 2.1.xx).  Probably not needed on
+# 64-bit systems (Alpha, sparc64 etc.).
+DFLAGS = $(shell getconf LFS_CFLAGS 2>/dev/null || echo -D_FILE_OFFSET_BITS=64)
+
+ALL_CPPFLAGS = $(DFLAGS) $(CPPFLAGS) $(DEFS) -I. -I$(srcdir)
+
+PROGS = frag
+SCRIPTS = defrag
+manpages = defrag frag
+mansymlinks =
+filesystems =
+
+ifdef USE_minix
+PROGS += mdefrag
+mansymlinks += mdefrag
+filesystems += minix
+endif
+ifdef USE_ext
+PROGS += edefrag
+mansymlinks += edefrag
+filesystems += ext
+endif
+ifdef USE_ext2
+PROGS += e2defrag
+PROGS += e2dump
+PROGS += e2defrag.static
+mansymlinks += e2defrag
+filesystems += ext2
+endif
+ifdef USE_xia
+PROGS += xdefrag
+PROGS += xdump
+mansymlinks += xdefrag
+filesystems += xia
+endif
+
+OBJS = defrag.o buffers.o display.o misc.o llseek.o
+
+all:	$(PROGS)
+
+check: all
+ifdef USE_ext2
+	$(MAKE) -C tests check
+endif
+
+frag: frag.c
+	$(CC) $(CFLAGS) $(ALL_CPPFLAGS) $(LDFLAGS) $< -o $@
+
+mdefrag:	libminix.a
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
+edefrag:	libext.a
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
+e2defrag:	libext2.a
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
+xdefrag:	libxia.a
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
+
+e2defrag.static:	display-plain.o libext2.a
+	$(CC) -static $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS:-lncurses=)
+
+e2dump:		e2dump.ext2.o libext2.a
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
+xdump:		xdump.xia.o libxia.a
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
+
+libminix.a: libminix.a($(OBJS:.o=.minix.o) minix.minix.o)
+	$(RANLIB) $@
+libext.a: libext.a($(OBJS:.o=.ext.o) ext.ext.o)
+	$(RANLIB) $@
+libext2.a: libext2.a($(OBJS:.o=.ext2.o) ext2.ext2.o)
+	$(RANLIB) $@
+libxia.a: libxia.a($(OBJS:.o=.xia.o) xia.xia.o)
+	$(RANLIB) $@
+
+%.minix.o: %.c
+	$(CC) $(CFLAGS) $(ALL_CPPFLAGS) -DFS_IS_minix -c -o $@ $<
+
+%.ext.o : %.c
+	$(CC) $(CFLAGS) $(ALL_CPPFLAGS) -DFS_IS_ext -c -o $@ $<
+
+%.ext2.o : %.c
+	$(CC) $(CFLAGS) $(ALL_CPPFLAGS) -DFS_IS_ext2 -c -o $@ $<
+
+display-plain.o: display-plain.c
+	$(CC) $(CFLAGS) $(ALL_CPPFLAGS) -DFS_IS_ext2 -c -o $@ $<
+
+%.xia.o : %.c
+	$(CC) $(CFLAGS) $(ALL_CPPFLAGS) -DFS_IS_xia -c -o $@ $<
+
+# Make sure all installation directories (e.g. $(bindir))
+# actually exist by making them if necessary.
+installdirs: mkinstalldirs
+	$(srcdir)/mkinstalldirs \
+	   $(DESTDIR)$(sbindir) $(DESTDIR)$(man8dir)
+
+install: all installdirs
+	set -e; for p in $(PROGS); do \
+	  $(INSTALL_PROGRAM) $$p $(DESTDIR)$(sbindir)/"`echo \"$$p\"|sed '$(transform)'`"; \
+	done
+	set -e; for p in $(SCRIPTS); do \
+	  $(INSTALL_SCRIPT) $$p $(DESTDIR)$(sbindir)/"`echo \"$$p\"|sed '$(transform)'`"; \
+	done
+	set -e; for m in $(manpages); do \
+	  $(INSTALL_DATA) $(srcdir)/$$m.8 $(DESTDIR)$(man8dir)/"`echo \"$$m\"|sed '$(transform)'`"$(man8ext); \
+	done
+	set -e; cd $(DESTDIR)$(man8dir); for m in $(mansymlinks); do \
+	  rm -f "`echo \"$$m\"|sed '$(transform)'`"$(man8ext); \
+	  $(LN_S) "`echo defrag|sed '$(transform)'`"$(man8ext) "`echo \"$$m\"|sed '$(transform)'`"$(man8ext); \
+	done
+
+install-strip:
+	$(MAKE) INSTALL_PROGRAM='$(INSTALL_PROGRAM) -s' install
+
+uninstall:
+	set -e; for p in $(PROGS) $(SCRIPTS); do \
+	  rm -f $(DESTDIR)$(sbindir)/"`echo \"$$p\"|sed '$(transform)'`"; \
+	done
+	set -e; for m in $(manpages) $(mansymlinks); do \
+	  rm -f $(DESTDIR)$(man8dir)/"`echo \"$$m\"|sed '$(transform)'`"$(man8ext); \
+	done
+
+.PHONY: all check clean distclean distribution dvi info install mostlyclean spotless tags TAGS
+
+mostlyclean:
+	rm -f $(PROGS) *.o *.a core .depend version.h
+	$(MAKE) -C tests clean
+
+clean: mostlyclean
+	rm -f $(PROGS)
+
+distclean spotless: clean
+	rm -f a.out *.i *.s *~ .depend version.h $(srcdir)/TAGS
+	rm -f config.cache config.h config.log config.status
+	rm -f defrag GNUmakefile makefile tests/Makefile tests/nonroot.sh
+
+TAGS tags:
+	cd $(srcdir) && $(ETAGS) *.[ch]  # README CHANGES INSTALL
+
+distribution: spotless
+	cd .. && \
+	 echo RCS CVS | \
+	 tar -cvzf defrag-$(VERSION).tar.gz -X - defrag-$(VERSION)/*
+
+info dvi:
+
+.PHONY: changes changelog ChangeLog
+changelog: ChangeLog
+changes: ChangeLog
+ChangeLog:
+	rcs2log -u "sct:Stephen C. Tweedie:sct@dcs.ed.ac.uk" > ChangeLog.new
+	cat ChangeLog >> ChangeLog.new
+	mv ChangeLog.new ChangeLog
+
+version.h:
+	echo "char const *version = \"$(VERSION)\";" >> version.h
+
+.PHONY: dep depend
+dep depend .depend: version.h
+	rm -f .depend
+# fudge for dependencies for separate filesystem binaries.
+# Try to avoid referring to intermediate object files in the .depend
+# file, so that make will delete them automatically once they have
+# been incorporated into their lib???.a archive files.
+	for t in $(filesystems); do \
+	  for f in $(OBJS) ; do \
+	    g=`basename $$f .o`; \
+	    $(CPP) -M -DFS_IS_$$t $(ALL_CPPFLAGS) $(srcdir)/$$g.c \
+		| sed "s/$$f/lib$$t.a($$g.$$t.o)/" >> .depend; \
+	  done; \
+	  $(CPP) -M -DFS_IS_$$t $(ALL_CPPFLAGS) $(srcdir)/$$t.c \
+		| sed "s/^\([a-z0-9]*\).o/lib$$t.a(\1.$$t.o)/" >> .depend; \
+	done
+ifdef USE_ext2
+	$(CPP) -M -DFS_IS_ext2 $(ALL_CPPFLAGS) $(srcdir)/e2dump.c \
+		| sed "s/^\([a-z0-9]*\).o/\1.ext2.o/" >> .depend
+endif
+ifdef USE_xia
+	$(CPP) -M -DFS_IS_xia $(ALL_CPPFLAGS) $(srcdir)/xdump.c \
+		| sed "s/^\([a-z0-9]*\).o/\1.xia.o/" >> .depend
+endif
+
+include .depend
+
+GNUmakefile: GNUmakefile.in
+	./config.status
+
+defrag: defrag.in
+	./config.status
+
+.SUFFIXES:

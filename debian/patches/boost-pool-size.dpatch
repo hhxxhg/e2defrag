@@ -1,0 +1,34 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## boost-pool-size.dpatch by Phillip Susi <psusi@cfl.rr.com>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Increases the default buffer pool size from 2 MB to 32 MB for dramatic
+## DP: speed increase on modern machines with plenty of RAM
+
+@DPATCH@
+diff -urNad defrag-0.73pjm1~/buffers.c defrag-0.73pjm1/buffers.c
+--- defrag-0.73pjm1~/buffers.c	2006-11-16 15:26:36.000000000 -0500
++++ defrag-0.73pjm1/buffers.c	2006-11-16 16:43:22.000000000 -0500
+@@ -42,7 +42,7 @@
+ */
+ 
+ static char tmps[128];
+-int pool_size = 512;
++int pool_size = 8192;
+ Buffer *pool;
+ Buffer *first_free_buffer;
+ static Buffer **select_set;
+diff -urNad defrag-0.73pjm1~/defrag.8 defrag-0.73pjm1/defrag.8
+--- defrag-0.73pjm1~/defrag.8	2001-07-04 07:08:13.000000000 -0400
++++ defrag-0.73pjm1/defrag.8	2006-11-16 16:47:09.000000000 -0500
+@@ -148,8 +148,8 @@
+ pool.  These buffers are used when relocating data, so the more
+ buffers allocated, the more efficient the relocation process.  The
+ number you choose will depend on how much physical and virtual memory
+-you have available.  The default pool size is 512 buffers (equivalent
+-to 2MB of memory used for filesystems with the default 4kB block
++you have available.  The default pool size is 8192 buffers (equivalent
++to 32MB of memory used for filesystems with the default 4kB block
+ size of current mke2fs versions).
+ .SH "SEE ALSO"
+ .BR mkfs (8),

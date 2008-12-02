@@ -1,0 +1,418 @@
+README for the Linux file system defragmenter
+
+defrag public release 0.73pjm1
+
+Copyright Stephen C. Tweedie, 1992, 1993, 1994, 1997, 1998 (sct@dcs.ed.ac.uk)
+
+	Parts Copyright Remy Card, 1992 (card@masi.ibp.fr)
+	Parts Copyright Linus Torvalds, 1992 (torvalds@kruuna.helsinki.fi)
+	Parts Copyright Alexey Vovenko, 1994
+	Parts Copyright Ulrich Habel, 1997 (espero@b31.hadiko.de)
+	Parts Copyright Peter Moulder, 2001 (pjm@bofh.asn.au)
+
+This file and the accompanying program may be redistributed under the
+terms of the GNU General Public License.
+
+
+*PLEASE* read *ALL* of this file before you start, even if you have
+already used previous versions of this defragmenter.
+
+This file contains the following sections:
+
+1) INTRODUCTION
+2) HOW TO USE
+3) PREPARING AN INODE PRIORITY FILE
+4) HINTS
+5) WARRANTY
+6) TODO
+
+
+INTRODUCTION: What does it do?
+==============================
+
+As a file system is used, data tends to become more and more scattered
+over the disk, degrading performance.  A disk defragmenter simply
+reorganises the data on the disk, so that individual files occupy a
+single sequential set of disk blocks, and all the free space on the
+disk is collected together in a single region.  This generally means
+that reading a whole file is more efficient.
+
+The extended file system stores a list of unused disk blocks in a
+series of unused blocks scattered over the disk (the "free list").
+When blocks are required to store data, they are removed from the head
+of the list, and are added back when released (by unlinking or
+truncating a file).
+
+However, only the free blocks stored at the head of the list are
+available to the extfs at any time.  This means that not all the free
+space is known to the extfs when it tries to find a free block; as a
+result, it does not always find the most efficient way to use free
+space.
+
+The resulting poorer performance over time of the extended file system
+is unfortunate, because the larger partitions and longer filenames it
+supports are useful to have around.
+
+So, the first release of the Linux defragmenter was specifically
+designed to overcome this major failing of the extended filesystem.
+It allows you to recover all that lost performance from your extfs
+partition.
+
+This is in contrast to the other standard Linux filesystems --- the
+minix, ext2fs and xiafs file systems --- in which free space is stored
+in a single bitmap, and the file system can allocate free space from
+anywhere on the disk.  These filesystems are very much less prone to
+severe fragmentation that extfs is.  The ext2fs filesystem also
+contains extra code to keep fragmentation reduced even in very full
+filesystems.  However, over time, even the best filesystem will
+eventually become more and more fragmented.
+
+* Note for ext2fs users - Ext2fs divides up partitions into "block
+groups", and it tries to balance the amount of data in each group in
+an effort to control fragmentation.  Defragmenting an ext2fs partition
+involves a compromise between making files contiguous and filling
+groups: some groups may simply contain far too many files for all
+those files to be stored within a single group.  So, don't be too
+surprised if, after defragmentation, "frag" reports that a very few of
+your larger files still are not entirely contiguous.
+
+For an idea of the performance gains you might obtain - the first time
+I defragmented my main extfs file system, the time taken to boot my PC
+(from switching on until the XDM X windows login prompt stabilises)
+dropped from 37 seconds to 27 seconds.  You can expect much less
+improvement if you already have an ext2fs filesystem: ext2fs is quite
+good at resisting fragmentation.  
+
+Performance improvements for ext2fs after defragmentation will
+probably be around 5-10% at most for random access (such as running
+binaries or loading demand-paged libraries), or 10-25% for sequential
+accesses: sequential accesses are much more sensitive to fragmentation
+that random accesses are.  The results you obtain will depend a lot on
+how full and old your filesystem is, of course.
+
+As for the performance of the defragmenter itself - well, that first
+version worked, but it thrashed my hard disk solid for over an hour
+(this was for a 90MB partition).  The current version runs in not much
+over 5 minutes now, and most of the accesses are sequential (ie. NO
+thrashing).  Granted that the fragmentation is not severe any longer,
+but that 5 or 6 minutes does still include reading and writing over
+70MB of the partition.
+
+Note - as of release 0.3, minix file systems are also supported.  As
+of release 0.6, ext2fs and xiafs filesystems have been added.
+
+HOW TO USE: and a few warnings.
+===============================
+
+Number one - (this applies to all - repeat, ALL - major file system
+              operations).
+
+*** BACK UP ANY IMPORTANT DATA BEFORE YOU START. ***
+
+There may be bugs in the defragmenter.  You may have undetected errors
+on your disk which are undiscovered until defrag tries to write to a
+bad block which has never been accessed before.  There may be power
+glitches, memory glitches, kernel errors.  defrag does some major
+reorganisation of disk data, and if for any reason it doesn't finish
+its work, most of your file system is likely to be trashed.
+
+*** YOU HAVE BEEN WARNED. ***
+
+*** NEVER try to defragment an active or mounted file system.
+
+It is often safe to use fsck on a mounted fs; don't be conned into
+thinking that the same will work for defrag.  The file system will be
+totally unusable while defrag is working; and if this causes a kernel
+crash, or if the fs interferes with the defragmenter as it runs, you
+may well loose your entire partition.
+
+This means that in order to defragment a root partition, you will
+probably need to run defrag from a boot floppy.
+
+However, it IS totally safe to run defrag in its readonly mode (for
+testing) on an active partition, although the defragmenter might get
+confused if other applications are writing to the filesystem at the
+same time.  Even in this worst case you will never lose data in the
+readonly mode, although defrag may well report errors during the run.
+
+*** Run fsck -f on the partition first, to check its integrity.
+
+Although I have been quite careful about the defragmenter's behaviour
+on a corrupt file system (it should back down gracefully before doing
+anything irreversible), it may well cause a lot of damage if the file
+system is invalid in any way which it does not quickly detect.
+
+In particular, there is limited handling of read/write errors in the
+defragmenter.  defrag DOES understand the bad block inode
+(and the special handling now works - as of version 0.3b), so if you
+suspect you might have bad blocks, try running fsck -t (test for bad
+blocks) before defragmenting.
+
+As of version 0.4, the defragmenter tries to recover as gracefully as
+possible from IO errors.  If any errors occur before the defragmenter
+has started committing new data to disk, it will abort immediately
+without making any changes.  Once it has started modifying the
+partition, however, it will try to continue after any IO errors.
+
+If defrag does encounter such an error, the bad block in question will
+probably be lost irretrievably - but this is pretty inevitable if you
+start to get bad blocks.  You should no longer lose any other data as
+a result of a bad block, but it is always a good idea to run fsck on
+your partition after such an event just to remove all references to
+the corrupted data.
+
+Also as of version 0.4, the defragmenter can be told to recognise a
+bad block inode on a non-extfs filesystem - use the "-b inode-number"
+option for this.  You can find the inode number of any file with  
+"ls -i".  For minix filesystems, the bad blocks are often collected
+together in /.badblocks.
+
+However, if you have an IDE drive, you probably needn't worry; you
+should never get any hd errors, as IDE drives dynamically remap bad
+blocks internally, as they occur.  I have received occassional reports
+of older IDE drives reporting bad blocks, though, so be careful.
+
+*** Run defrag -r next, just to be sure.
+
+If there are any bugs in the defragmenter, running in readonly mode
+first may find them (defrag does quite a lot of self-checking as it
+goes) before you lose any data.
+
+*** Reinstall lilo after defragmenting a bootable partition.
+
+Defragmentation moves data around the disk.  defrag knows about all of
+the file system's internal pointers to this data, so these are
+adjusted as needed to keep the file system intact.  Lilo,
+unfortunately, keeps its own pointers to the physical location of
+kernel image files, so that the kernel can be loaded before the
+filesystem is running.  (These pointers are usually kept in
+/etc/lilo/map or /boot/map.)
+
+  If you defragment a partition containing a lilo-bootable kernel
+image, you MUST reinstall lilo to rebuild the now-invalid map file,
+even if the map file is kept on a different partition.
+
+
+Usage: edefrag | e2defrag | mdefrag | xdefrag  [-Vdnrsv] [-b bad-inode] 
+		[-p pool_size] [-i inode-list] /dev/name
+
+	-V : Prints the full CVS version id for the release.  Send me
+	     this information with any problem reports or suggestions.
+	-n : disable full-screen picture mode.
+	-s : Show superblock information.
+	-v : Verbose.  Shows what the program is doing.  If used
+	     twice, gives extra progress information.
+	-r : Readonly.  This opens the file system in readonly mode,
+	     which guarantees that your data will not be harmed.  This
+	     can be useful for testing purposes, especially for
+	     working out the best buffer pool size to use.
+	-d : (If enabled at compile-time) Debug mode.
+
+	The bad-inode is the number of an inode whose data blocks are
+	all bad disk blocks.  The defragmenter will be careful not to
+	use or move any of these blocks.  This is useful if you have a
+	badblock file under minix fs; extfs has an automatic badblock
+	inode in inode 2.
+
+	The pool_size is the number of 1KB (disk block) buffers to
+	allocate to the buffer pool while relocating the file system
+	data. (Default is 512; it cannot be set below 20.)  The more
+	buffers, the more data defrag can read in at once and the
+	faster the defragmentation will be.
+
+	The inode-list is a file giving a priority to inodes.  When
+	defrag reshuffles data, it allocates inodes of higher
+	priority first, so these will end up nearer the start of the
+	disk.
+
+	Finally, /dev/name should be the device to be defragmented; an
+	image file may also be used (for debugging purposes), as
+	edefrag does not check that the file is a block device.
+
+
+PREPARING AN INODE PRIORITY FILE
+================================
+
+One of the new features of version 0.4 of the defragmenter is the
+ability to specify how you want the data on your disk reorganised.
+
+There are two main benefits from this.  First of all, you can keep
+related data together to minise disk seek times.  Whereas ext2fs is
+pretty good at keeping related data close together on disk on its own,
+other filesystems (especially extfs) can scatter related files widely
+over the whole disk.
+
+Secondly, you can move the changing portions of the filesystem
+together - typically, directories like /bin are fairly static, whereas
+/home directories are changing all the time - and so reduce the area
+of the disk which suffers from fragmentation.  This is especially
+important under extfs, which can sometimes scatter new files all over
+the fragmented disk area.
+
+The way this is done is by giving each inode a priority.  All
+inodes have priority zero by default; by supplying [e]defrag with an
+inode priority file, you can specify a priority between -100 and 100
+for any inode.  Higher priorities are allocated nearer the start of
+the disk (and further from the disk's free space) than lower (more
+negative) priorities.  If two inodes have equal priority, then they
+are allocated in the same order they were originally in on the disk.
+
+The inode-list file should contain one number per line.  If the number
+is prefixed with an equals sign, then it is interpreted as a priority
+to be applied to subsequent inodes; otherwise it is interpreted as an
+inode number, which is given the current priority.
+
+If an invalid or unused inode is given in the file, then edefrag
+outputs a warning.  If a used inode does not appear in the file then
+its priority remains zero.  It is perfectly legal for an inode to
+appear more than once; only the last appearence will be used.
+
+As a small example,
+
+=1
+100
+101
+102
+=-1
+102
+
+is a possible inode-list file which would increase the priority of
+inodes 100 and 101, and reduce that of inode 102.
+
+The root and badblock inodes are always allocated first; specifying a
+priority for them has no effect.
+
+I have included a sample shell script, mkilist.sample, with defrag.
+This creates a file suitable for use as an inode-list file.
+
+Note that it should not be necessary to use the inode list every time
+you defragment.  In the absence of this list, all inodes are
+reallocated in the same order they appear on the disk, so you should
+only need to do a major reorganisation when this order becomes
+significantly sub-optimal.
+
+
+HINTS
+=====
+
+You may want to experiment with defrag to find the best memory usage
+before defragmenting.  Currently, the significant tables held in
+memory by edefrag are:
+
+Relocation maps - eight bytes per block.
+Inode maps - 8 bytes per inode.
+
+The buffer pool must be added on top of this.
+
+For a typical file system, this works out at around 26K of memory
+required per MB of disk space, or 2.6MB memory for a 100MB disk
+partition; plus the buffer pool.
+
+It is safe to use a swap file or partition if memory is tight (but NOT
+a swap file on the file system being defragmented!).
+
+(Don't worry about the defragmenter suddenly running out of memory
+during its work; all the memory required is allocated and initialised
+before it starts operation, so any memory errors should occur before
+the file system gets touched.)
+
+The defragmenter tries as hard as possible to group reads and writes
+into long sequential accesses.  Data being overwritten on the disk
+gets put into a rescue buffer, and may soon just get written back
+during the normal course of sequential writes.  However, if the buffer
+pool is too small or the disk is highly fragmented, edefrag tries to
+clear out the rescued data by seeing if its final destination is empty
+yet.  (These are termed "migrate" writes; the data migrates from the
+rescue pool to the output pool.)  If that fails to free enough space,
+edefrag forces some of the rescue buffers out into empty blocks
+("forcing" writes), from which the data will have to be re-read at
+some point.
+
+The upshot of this is that normal buffer writes are highly sequential
+and efficient; "migrate" writes are slightly less sequential, but
+still quite efficient; and "forcing" writes cause data to be read
+twice, and from this point of view are quite inefficient.
+
+Running defrag with the -r option will scan your file system
+non-destructively, and will report on the work it would have to do to
+defragment the disk.  This facility can be used to adjust the pool
+size requested to compromise between memory used and defragmenting
+efficiency.
+
+For example, I have just run:
+$ edefrag -r /dev/hda3		[ default 512K buffer pool ]
+
+[ ... superblock statistics deleted ... ]
+Relocation statistics:
+44807 buffer reads in 91 groups, of which:
+  14004 read-aheads.
+44807 buffer writes in 91 groups, of which:
+  0 migrations, 0 forces.
+
+$ edefrag -r -p 100 /dev/hda3
+
+[ ... superblock statistics deleted ... ]
+45299 buffer reads in 618 groups, of which:
+  13310 read-aheads.
+45299 buffer writes in 618 groups, of which:
+  202 migrations, 492 forces.
+
+The first result indicates a higher efficiency with 512 buffers
+than with 100.  However, even the second run would have been quite
+quick; 492 forces out of a 90MB file system is not bad.  (By the way,
+the reason the total number of writes is less than 90MB is that much
+of my hard disk was fully defragmented anyway. 8-)  
+
+If, however, my disk had been badly fragmented (as it used to be...) I
+would probably have had to allocate around 2000-4000 buffers to get
+good efficiency with few forced writes.
+
+The tradeoff is that the less memory you allocate for pool buffers,
+the more is available for the kernel to cache reads itself.  Since the
+kernel reads entire tracks at a time, leaving space to the kernel
+effectively gives extra "free" buffer reads.
+
+I'm not yet quite sure whether it is more efficient to leave the
+kernel with a healthily large cache for itself, or to allocate as much
+for edefrag's own (more optimised for the task) buffering scheme.  You
+may want to experiment here, and I would be interested in hearing any
+conclusions you reach.  I am running with 16MB ram, so if you have
+less ram your mileage may vary. 
+
+
+WARRANTY (or lack thereof):
+===========================
+
+NONE.  Use at your own risk.  BACK UP ANY IMPORTANT DATA BEFORE YOU
+START.
+
+I have successfully run edefrag and e2defrag on filesystems up to about
+2.1GB in size, and has been reported to work successfully on filesystems
+well over 4GB in size.  It has been tested on particularly hard jobs,
+such as defragmenting a 1.44MB floppy with a buffer pool restricted to
+20KB - lots of extra writes are necessary to cope with a tiny buffer
+pool.  This release has never crashed for me, and has never lost me any
+data.  I am confident enough to use it fairly regularly, and if I back
+up data before using it, I only backup stuff which cannot be reinstalled
+from other sources.  I have tried as far as possible to ensure that
+edefrag will not harm your data.  However, I cannot make ANY guarantee
+that it won't.  Use it and enjoy it, but don't blame me if it ruins your
+day.
+
+Having said that, if you DO have problems, let me know and I'll try to
+fix them for the next release.  (Even better, send me bug fixes!)
+
+
+TO DO:
+======
+
+The sync() frequency should probably be configurable at run-time.
+
+Defrag is optimised for efficiency - it reorganises a lot of the
+filesystem at once in order to minimise disk seek times.  In the
+future I should add a "safe" option which reorganises the disk one
+inode at a time, in order to reduce the extent of the resulting
+corruption if the defragmentation process is halted for any reason.
+
+===
+Stephen Tweedie (sct@dcs.ed.ac.uk).
