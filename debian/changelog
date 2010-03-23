@@ -1,3 +1,9 @@
+defrag (0.74) karmic; urgency=low
+
+  * Initial release as a native Ubuntu package
+
+ -- Phillip Susi <psusi@cfl.rr.com>  Tue, 23 Mar 2010 16:07:32 -0400
+
 defrag (0.73pjm1-8ubuntu2) gutsy; urgency=low
 
   * modern-inodes.dpatch: Updated refernces to changed inode fields.

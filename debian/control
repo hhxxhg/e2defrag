@@ -3,7 +3,7 @@ Section: admin
 Priority: extra
 Maintainer: Goswin von Brederlow <brederlo@informatik.uni-tuebingen.de>
 Standards-Version: 3.6.2.0
-Build-Depends: debhelper (>= 4.0.0), libncurses-dev, bzip2, e2fslibs-dev, dpatch, autoconf2.13, automake1.4
+Build-Depends: debhelper (>= 4.0.0), libncurses-dev, bzip2, e2fslibs-dev, autoconf2.13, automake1.4
 
 Package: defrag
 Architecture: any
