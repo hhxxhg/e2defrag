@@ -79,9 +79,9 @@ static inline int bit_is_set(char * bitmap,unsigned int nr)
 static inline unsigned long bit_is_set(const void * addr, int nr)
 {
 # if powerpc
-	return 1UL & (((const int *) addr)[nr >> 5] >> (nr & 31)));
+	return 1UL & (((const int *) addr)[nr >> 5] >> (nr & 31));
 # else
-	return 1UL & (((const unsigned char *) addr)[nr >> 3] >> (nr & 7)));
+	return 1UL & (((const unsigned char *) addr)[nr >> 3] >> (nr & 7));
 # endif
 }
 #endif

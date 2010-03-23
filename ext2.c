@@ -238,7 +238,7 @@ void init_inode_bitmap (void)
         for (i = 0; i < groups; i++) {
                 pos = (loff_t) bg[i].bg_inode_bitmap * block_size;
                 if (debug)
-                        printf("Group:%d inode_bitmap at:%llu\n",i,pos);
+                        printf("Group:%d inode_bitmap at:%llu\n",i,(unsigned long long)pos);
                 if (pos!=nlseek(IN,pos,SEEK_SET)) 
                         die("seek failed reading inode bitmap");
            
