@@ -49,6 +49,7 @@ static char *zone_map = NULL;
 #define bm_mark_zone(x) (setbit(zone_map,(x)-FIRSTZONE),changed=1)
 #define bm_unmark_zone(x) (clrbit(zone_map,(x)-FIRSTZONE),changed=1) 
 
+extern Block journal_inode;
 
 /** @postcondition E1: Super.s_inodes_per_group % 8 == 0.
     @postcondition E2: Super.s_blocks_per_group % 8 == 0.
@@ -118,6 +119,8 @@ void read_tables (void)
 					| EXT2_FEATURE_INCOMPAT_FILETYPE)))
       die( "filesystem has unsupported features");
 
+    if(Super.s_feature_compat & EXT3_FEATURE_COMPAT_HAS_JOURNAL)
+      journal_inode = 8;
     block_size = EXT2_MIN_BLOCK_SIZE << Super.s_log_block_size;
 
     groups = (Super.s_blocks_count - Super.s_first_data_block + 
