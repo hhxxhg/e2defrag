@@ -123,13 +123,7 @@ static void load_super(void)
    if (read(IN,&s,sizeof(s))!=sizeof(s)) 
       exit(1);
    super_valid = ((s.s_magic == EXT2_SUPER_MAGIC)
-		  && (s.s_feature_incompat == 0)
-		  && !(s.s_feature_ro_compat & EXT2_FEATURE_RO_COMPAT_LARGE_FILE));
-   /* large_file is not truly a read-only compatible feature.  (All uses of
-      i_size would need to be modified, including testing for non-zero.)  We can
-      only hope that there aren't any other such features assigned to
-      s_feature_ro_compat.  (sparse_super is fine.  I haven't looked at
-      btree_dir.) */
+		  && (s.s_feature_incompat == 0));
    if (!super_valid) 
              return;
    block_size = EXT2_MIN_BLOCK_SIZE << s.s_log_block_size;
@@ -323,7 +317,8 @@ static __u32 check_block_location(__u32 bn)
 
 static void check_allocation(struct ext2_inode const *n, int quiet)
 {
-   loff_t checked_size = 0, file_size;
+   loff_t checked_size = 0;
+   unsigned long long file_size;
    int i_idx = 0;
    int ii_idx = 0;
    int id_idx = 0;
@@ -344,7 +339,7 @@ static void check_allocation(struct ext2_inode const *n, int quiet)
    file_size = n->i_size;
    if((s.s_feature_ro_compat & EXT2_FEATURE_RO_COMPAT_LARGE_FILE)
       && !S_ISDIR( n->i_mode))
-     file_size |= (loff_t) n->i_dir_acl << 32;
+     file_size |= (unsigned long long) n->i_dir_acl << 32;
 
    my_printf("Allocation:") ;
    while (checked_size < file_size) {
@@ -492,6 +487,7 @@ static void dump_inode(__u32 inode_no)
      to find the right printf directive. */
    struct ext2_inode n;
    time_t t;
+   unsigned long long file_size;
 
    printf("\nINODE %lu\n", (unsigned long) inode_no);
    load_inode(&n,inode_no);
@@ -506,7 +502,11 @@ static void dump_inode(__u32 inode_no)
    else if (S_ISSOCK(n.i_mode)) printf("(socket)\n");
    printf("Owner Uid %d ",(uint) n.i_uid);
    printf("Group Id %d\n",(uint) n.i_gid);
-   printf("File size %lu\n", (unsigned long) n.i_size);
+   file_size = n.i_size;
+   if((s.s_feature_ro_compat & EXT2_FEATURE_RO_COMPAT_LARGE_FILE)
+      && !S_ISDIR( n.i_mode))
+     file_size |= (unsigned long long) n.i_dir_acl << 32;
+   printf("File size %llu\n", file_size);
    t = n.i_atime;
    printf("Access time      : %s", ctime (&t));
    t = n.i_ctime;
@@ -527,6 +527,7 @@ static void dump_inode(__u32 inode_no)
    printf("Links count: %d\n", (uint) n.i_links_count);
                              /* in 512 byte blocks for some unknown reason */
    printf("512-Blocks count: %lu\n", (unsigned long) n.i_blocks); 
+   printf("Blocks-hi: %lu\n", (unsigned long) n.osd2.linux2.l_i_blocks_hi);
    if (n.i_flags !=0) printf ("Flags 0x%lX\n", (unsigned long) n.i_flags);
 
    printf("Version: %lu\n", (unsigned long) n.i_generation);
@@ -535,11 +536,6 @@ static void dump_inode(__u32 inode_no)
    if (n.i_file_acl!=0 || n.i_dir_acl!=0) {    
       printf("File ACL: %lu  ", (unsigned long) n.i_file_acl);
       printf("Directory ACL: %lu\n", (unsigned long) n.i_dir_acl);	
-   }
-   if (n.i_faddr!=0 || n.i_frag!=0 || n.i_fsize!=0) {     
-      printf("Fragment address: %lu\n", (unsigned long) n.i_faddr);
-      printf("Fragment number: %u\n",n.i_frag);
-      printf("Fragment size: %u\n",n.i_fsize);
    }
    start_of_group = 1 + (inode_no/s.s_inodes_per_group)*s.s_blocks_per_group;
    end_of_group = start_of_group+s.s_blocks_per_group;
@@ -629,6 +625,7 @@ static void report_fragm(void)
          avr_fr_size=0,
          avr_dist_file=0,
          avr_fr_size_file=0;
+   unsigned long long file_size;
 
    for (inode_no=FIRST_USER_INODE; inode_no <= s.s_inodes_count; inode_no++) {
       load_inode(&n,inode_no);
@@ -642,16 +639,20 @@ static void report_fragm(void)
          printf("ERROR: inode %lu not marked busy in bitmap\n",
 		(unsigned long) inode_no);
       check_allocation(&n,TRUE);
+      file_size = n.i_size;
+      if((s.s_feature_ro_compat & EXT2_FEATURE_RO_COMPAT_LARGE_FILE)
+	 && !S_ISDIR( n.i_mode))
+	file_size |= (unsigned long long) n.i_dir_acl << 32;
       if (fragments > 1) {
-         printf("Inode: %lu, frag: %lu, file size %lu, ",
-                (unsigned long) inode_no, fragments, (unsigned long) n.i_size);
+         printf("Inode: %lu, frag: %lu, file size %llu, ",
+                (unsigned long) inode_no, fragments, file_size);
          total_frag_files++;       
          total_fragments += fragments;
       }
-      if (n.i_size > 0) {
+      if (file_size > 0) {
          if (fragments > 1) {
             avr_dist_file  = distance /(fragments-1);
-            avr_fr_size_file = UPPER(n.i_size,block_size)/(fragments);
+            avr_fr_size_file = UPPER(file_size,block_size)/(fragments);
             avr_dist += avr_dist_file;
             avr_fr_size += avr_fr_size_file;
          }   
