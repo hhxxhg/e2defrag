@@ -42,7 +42,7 @@
 */
 
 static char tmps[128];
-int pool_size = 512;
+int pool_size = 8192;
 Buffer *pool;
 Buffer *first_free_buffer;
 static Buffer **select_set;

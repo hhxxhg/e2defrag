@@ -148,8 +148,8 @@ Selects the number of buffers allocated to the defragmenter's buffer
 pool.  These buffers are used when relocating data, so the more
 buffers allocated, the more efficient the relocation process.  The
 number you choose will depend on how much physical and virtual memory
-you have available.  The default pool size is 512 buffers (equivalent
-to 2MB of memory used for filesystems with the default 4kB block
+you have available.  The default pool size is 8192 buffers (equivalent
+to 32MB of memory used for filesystems with the default 4kB block
 size of current mke2fs versions).
 .SH "SEE ALSO"
 .BR mkfs (8),
