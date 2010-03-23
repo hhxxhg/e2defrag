@@ -10,6 +10,7 @@
 #include <config.h>
 #include <sys/types.h>
 #include <strings.h>
+#include <string.h>
 #include <stdlib.h>
 #include <ncurses.h>
 #include <stdarg.h>
@@ -23,6 +24,8 @@
 #else
    int voyer_mode = 1;
 #endif
+
+extern unsigned int groups;
 
 static WINDOW *map_w=NULL;
 static WINDOW *legend=NULL,*stats=NULL, *st_line=NULL;
@@ -46,11 +49,14 @@ static void _die(char const *last_words)
 static RETSIGTYPE
 tstp_signal(int dummy)
 {
+   sigset_t emptyset;
    UNUSED(dummy);
 
    endwin();
    signal(SIGTSTP,SIG_DFL);
-   sigsetmask(0);
+   /* sigsetmask(0); */
+   sigemptyset(&emptyset);
+   sigprocmask(SIG_SETMASK, &emptyset, NULL);
    /* Put us to stop */
    kill(getpid(),SIGTSTP);     
    
@@ -343,7 +349,11 @@ static void show_cell(int i)
   int mask = 0;
   int attr;
   int glyph;
+  char bigdisk;
   
+  if( (groups << 1) > screen_cells )
+    bigdisk = 1;
+  else bigdisk = 0;
   if (screen_map[i] & AT_SELECTED && 
      !(screen_map[i] & (AT_SUPER | AT_BITMAP | AT_INODE))) 
          mask |= A_REVERSE;
@@ -373,12 +383,12 @@ static void show_cell(int i)
       glyph = 'S';
   }
   
-  else if (screen_map[i] & AT_BITMAP) {
+  else if (screen_map[i] & AT_BITMAP && !bigdisk) {
       attr = CELL_ATTR (ATR_BITMAP);
       glyph = 'M';
   }
   
-  else if (screen_map[i] & AT_INODE) {
+  else if (screen_map[i] & AT_INODE && !bigdisk) {
       attr = CELL_ATTR (ATR_INODE);
       glyph = 'I';
   }

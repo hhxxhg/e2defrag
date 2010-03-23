@@ -18,12 +18,13 @@
 #include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
-#include <linux/ext2_fs.h>
 #include "types.h"
+#include <ext2fs/ext2_fs.h>
 #include "ext2.h"
 #include "display.h"
 
@@ -53,12 +54,12 @@ struct group_table {
 } *gt;
 
 #if defined(__i386__) && defined(__GNUC__)
-static inline int bit_is_set(char * bitmap,unsigned int nr) 
+static inline int bit_is_set(const void * bitmap, unsigned int nr) 
 { 
 	int __res; 
 	__asm__ __volatile__("btl %1,%2; adcl $0,%0" 
 		:"=g" (__res) 
-		:"r" (nr),"m" (*(bitmap)),"0" (0)); 
+		:"r" (nr),"m" (*(const char*)(bitmap)),"0" (0)); 
 	return __res; 
 }
 #else
@@ -78,9 +79,9 @@ static inline int bit_is_set(char * bitmap,unsigned int nr)
 static inline unsigned long bit_is_set(const void * addr, int nr)
 {
 # if powerpc
-	return 1UL & (((const int *) addr)[nr >> 5] >> (nr & 31)));
+	return 1UL & (((const int *) addr)[nr >> 5] >> (nr & 31));
 # else
-	return 1UL & (((const unsigned char *) addr)[nr >> 3] >> (nr & 7)));
+	return 1UL & (((const unsigned char *) addr)[nr >> 3] >> (nr & 7));
 # endif
 }
 #endif
@@ -92,7 +93,7 @@ static inline unsigned long bit_is_set(const void * addr, int nr)
 
 #define UPPER(size,n)		((size + ((n) - 1)) / (n))
 
-#define my_printf(a...) do { if (!quiet) printf(##a); } while(0)
+#define my_printf(a...) do { if (!quiet) printf(a); } while(0)
 
 static int IN;         /* Input device handle */
 
@@ -122,13 +123,7 @@ static void load_super(void)
    if (read(IN,&s,sizeof(s))!=sizeof(s)) 
       exit(1);
    super_valid = ((s.s_magic == EXT2_SUPER_MAGIC)
-		  && (s.s_feature_incompat == 0)
-		  && !(s.s_feature_ro_compat & EXT2_FEATURE_RO_COMPAT_LARGE_FILE));
-   /* large_file is not truly a read-only compatible feature.  (All uses of
-      i_size would need to be modified, including testing for non-zero.)  We can
-      only hope that there aren't any other such features assigned to
-      s_feature_ro_compat.  (sparse_super is fine.  I haven't looked at
-      btree_dir.) */
+		  && (s.s_feature_incompat == 0));
    if (!super_valid) 
              return;
    block_size = EXT2_MIN_BLOCK_SIZE << s.s_log_block_size;
@@ -322,7 +317,8 @@ static __u32 check_block_location(__u32 bn)
 
 static void check_allocation(struct ext2_inode const *n, int quiet)
 {
-   loff_t checked_size = 0, file_size;
+   loff_t checked_size = 0;
+   unsigned long long file_size;
    int i_idx = 0;
    int ii_idx = 0;
    int id_idx = 0;
@@ -343,7 +339,7 @@ static void check_allocation(struct ext2_inode const *n, int quiet)
    file_size = n->i_size;
    if((s.s_feature_ro_compat & EXT2_FEATURE_RO_COMPAT_LARGE_FILE)
       && !S_ISDIR( n->i_mode))
-     file_size |= (loff_t) n->i_dir_acl << 32;
+     file_size |= (unsigned long long) n->i_dir_acl << 32;
 
    my_printf("Allocation:") ;
    while (checked_size < file_size) {
@@ -448,6 +444,7 @@ static void check_allocation(struct ext2_inode const *n, int quiet)
 
 static void dump_super(void)
 {
+  time_t t;
   printf("SUPERBLOCK:\n");
   printf("Inodes count:%lu\n", 
 	 (unsigned long) s.s_inodes_count);      /* Inodes count */
@@ -469,10 +466,12 @@ static void dump_super(void)
 	 (unsigned long) s.s_frags_per_group);   /* # Fragments per group */
   printf("Inodes per group:%lu\n",
 	 (unsigned long) s.s_inodes_per_group);  /* # Inodes per group */
+  t = s.s_mtime;
   printf("mount time:%s", 
-	 ctime ((time_t *) &s.s_mtime));    /* Mount time */
+	 ctime (&t));    /* Mount time */
+  t = s.s_wtime;
   printf("write time:%s", 
-	 ctime ((time_t *) &s.s_wtime));    /* Write time */
+	 ctime (&t));    /* Write time */
   printf("magic:0x%X", s.s_magic); 		       /* Magic signature */
   if (s.s_magic == EXT2_SUPER_MAGIC) printf(" (OK)\n");
   else printf(" (???) ");
@@ -487,6 +486,8 @@ static void dump_inode(__u32 inode_no)
      those when on a 64-bit system, though that requires some autoconf magic
      to find the right printf directive. */
    struct ext2_inode n;
+   time_t t;
+   unsigned long long file_size;
 
    printf("\nINODE %lu\n", (unsigned long) inode_no);
    load_inode(&n,inode_no);
@@ -501,10 +502,17 @@ static void dump_inode(__u32 inode_no)
    else if (S_ISSOCK(n.i_mode)) printf("(socket)\n");
    printf("Owner Uid %d ",(uint) n.i_uid);
    printf("Group Id %d\n",(uint) n.i_gid);
-   printf("File size %lu\n", (unsigned long) n.i_size);
-   printf("Access time      : %s", ctime ((time_t *) &n.i_atime));
-   printf("Creation time    : %s", ctime ((time_t *) &n.i_ctime));
-   printf("Modification time: %s", ctime ((time_t *) &n.i_mtime));
+   file_size = n.i_size;
+   if((s.s_feature_ro_compat & EXT2_FEATURE_RO_COMPAT_LARGE_FILE)
+      && !S_ISDIR( n.i_mode))
+     file_size |= (unsigned long long) n.i_dir_acl << 32;
+   printf("File size %llu\n", file_size);
+   t = n.i_atime;
+   printf("Access time      : %s", ctime (&t));
+   t = n.i_ctime;
+   printf("Creation time    : %s", ctime (&t));
+   t = n.i_mtime;
+   printf("Modification time: %s", ctime (&t));
    if (inode_is_busy(inode_no)) {
       if (n.i_dtime!=0) printf("ERROR: bitmap is 1  ");
    }
@@ -512,10 +520,14 @@ static void dump_inode(__u32 inode_no)
       if (n.i_dtime==0 && n.i_ctime!=0) printf("ERROR: bitmap is 0\n ");
       
    if (n.i_dtime!=0)
-      printf("Deletion time    : %s", ctime ((time_t *) &n.i_dtime));
+     {
+       t = n.i_dtime;
+       printf("Deletion time    : %s", ctime (&t));
+     }
    printf("Links count: %d\n", (uint) n.i_links_count);
                              /* in 512 byte blocks for some unknown reason */
    printf("512-Blocks count: %lu\n", (unsigned long) n.i_blocks); 
+   printf("Blocks-hi: %lu\n", (unsigned long) n.osd2.linux2.l_i_blocks_hi);
    if (n.i_flags !=0) printf ("Flags 0x%lX\n", (unsigned long) n.i_flags);
 
    printf("Version: %lu\n", (unsigned long) n.i_generation);
@@ -524,11 +536,6 @@ static void dump_inode(__u32 inode_no)
    if (n.i_file_acl!=0 || n.i_dir_acl!=0) {    
       printf("File ACL: %lu  ", (unsigned long) n.i_file_acl);
       printf("Directory ACL: %lu\n", (unsigned long) n.i_dir_acl);	
-   }
-   if (n.i_faddr!=0 || n.i_frag!=0 || n.i_fsize!=0) {     
-      printf("Fragment address: %lu\n", (unsigned long) n.i_faddr);
-      printf("Fragment number: %u\n",n.i_frag);
-      printf("Fragment size: %u\n",n.i_fsize);
    }
    start_of_group = 1 + (inode_no/s.s_inodes_per_group)*s.s_blocks_per_group;
    end_of_group = start_of_group+s.s_blocks_per_group;
@@ -618,6 +625,7 @@ static void report_fragm(void)
          avr_fr_size=0,
          avr_dist_file=0,
          avr_fr_size_file=0;
+   unsigned long long file_size;
 
    for (inode_no=FIRST_USER_INODE; inode_no <= s.s_inodes_count; inode_no++) {
       load_inode(&n,inode_no);
@@ -631,16 +639,20 @@ static void report_fragm(void)
          printf("ERROR: inode %lu not marked busy in bitmap\n",
 		(unsigned long) inode_no);
       check_allocation(&n,TRUE);
+      file_size = n.i_size;
+      if((s.s_feature_ro_compat & EXT2_FEATURE_RO_COMPAT_LARGE_FILE)
+	 && !S_ISDIR( n.i_mode))
+	file_size |= (unsigned long long) n.i_dir_acl << 32;
       if (fragments > 1) {
-         printf("Inode: %lu, frag: %lu, file size %lu, ",
-                (unsigned long) inode_no, fragments, (unsigned long) n.i_size);
+         printf("Inode: %lu, frag: %lu, file size %llu, ",
+                (unsigned long) inode_no, fragments, file_size);
          total_frag_files++;       
          total_fragments += fragments;
       }
-      if (n.i_size > 0) {
+      if (file_size > 0) {
          if (fragments > 1) {
             avr_dist_file  = distance /(fragments-1);
-            avr_fr_size_file = UPPER(n.i_size,block_size)/(fragments);
+            avr_fr_size_file = UPPER(file_size,block_size)/(fragments);
             avr_dist += avr_dist_file;
             avr_fr_size += avr_fr_size_file;
          }   

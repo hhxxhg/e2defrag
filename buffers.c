@@ -12,7 +12,7 @@
 #include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
-/* #include <string.h> conflicts with kernel headers.  TODO: Fix kernel headers. */
+#include <string.h>
 #include <unistd.h>
 #include "defrag.h"
 
@@ -42,7 +42,7 @@
 */
 
 static char tmps[128];
-int pool_size = 512;
+int pool_size = 8192;
 Buffer *pool;
 Buffer *first_free_buffer;
 static Buffer **select_set;
@@ -252,8 +252,8 @@ static void select_buffers (int (*fn) (const Buffer *))
 static int compare_buffer_zones(const void *a, const void *b)
 {
 	Block azone, bzone;
-	azone = (*((Buffer const **) a))->dest_zone;
-	bzone = (*((Buffer const **) b))->dest_zone;
+	azone = (*((Buffer const * const *) a))->dest_zone;
+	bzone = (*((Buffer const * const *) b))->dest_zone;
 	
 	if (azone < bzone)
 		return -1;
@@ -266,8 +266,8 @@ static int compare_buffer_zones(const void *a, const void *b)
 static int compare_buffer_zones_for_read (const void *a, const void *b)
 {
 	Block azone, bzone;
-	azone = n2d((*((Buffer const **) a))->dest_zone);
-	bzone = n2d((*((Buffer const **) b))->dest_zone);
+	azone = n2d((*((Buffer const * const *) a))->dest_zone);
+	bzone = n2d((*((Buffer const * const *) b))->dest_zone);
 	
 	if (azone < bzone)
 		return -1;

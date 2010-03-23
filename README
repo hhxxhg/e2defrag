@@ -145,7 +145,7 @@ system is invalid in any way which it does not quickly detect.
 In particular, there is limited handling of read/write errors in the
 defragmenter.  defrag DOES understand the bad block inode
 (and the special handling now works - as of version 0.3b), so if you
-suspect you might have bad blocks, try running fsck -t (test for bad
+suspect you might have bad blocks, try running fsck -c -c (test for bad
 blocks) before defragmenting.
 
 As of version 0.4, the defragmenter tries to recover as gracefully as

@@ -140,7 +140,7 @@ struct Buffer
 	unsigned int full : 1; /* contains data */
 	Buffer *next;
 	Block dest_zone;
-	unsigned char data[0];
+	char data[0];
 };
 
 

@@ -23,7 +23,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
-/*#include <string.h> conflicts with linux/string.h.  Ought to fix ext2.h instead.*/
+#include <string.h>
 #include <termios.h>
 #include <getopt.h>
 #include <fcntl.h>
@@ -52,7 +52,7 @@ int badblocks = 0;
 int readonly = 0;
 int changed = 0;
 int blocks_until_sync = 0;
-Block bad_block_inode = 0, user_bad_inode = 0;
+Block bad_block_inode = 0, user_bad_inode = 0, journal_inode;
 
 #ifndef FS_IS_ext2
 Block next_block_to_fill = 0;
@@ -285,7 +285,12 @@ static int walk_zone_ind (Block * znr, enum walk_zone_mode mode)
         set_attr(*znr,AT_DATA);
 	if (mode == WZ_SCAN)
 		update_inode_average(*znr);
-	
+	if( mode == WZ_FIXED_BLOCKS )
+	  {
+		mark_fixed(*znr);
+		set_attr(*znr,AT_BAD);
+		badblocks++;
+	  }	
 	read_current_block(*znr, blk);
 
         if (mode == WZ_REMAP) {
@@ -329,7 +334,12 @@ static int walk_zone_dind (Block * znr, enum walk_zone_mode mode)
         set_attr(*znr,AT_DATA);
 	if (mode == WZ_SCAN)
 		update_inode_average(*znr);
-	
+	if( mode == WZ_FIXED_BLOCKS )
+	  {
+		mark_fixed(*znr);
+		set_attr(*znr,AT_BAD);
+		badblocks++;
+	  }	
 	read_current_block(*znr, blk);
 	
 	if (mode == WZ_REMAP) {
@@ -372,7 +382,12 @@ static int walk_zone_tind (Block * znr, enum walk_zone_mode mode)
         set_attr(*znr,AT_DATA);
 	if (mode == WZ_SCAN)
 		update_inode_average(*znr);
-	
+	if( mode == WZ_FIXED_BLOCKS )
+	  {
+		mark_fixed(*znr);
+		set_attr(*znr,AT_BAD);
+		badblocks++;
+	  }		
 	read_current_block(*znr, blk);
 
 	if (mode == WZ_REMAP)
@@ -396,6 +411,10 @@ static void walk_inode (struct d_inode *inode, enum walk_zone_mode mode)
 {
 	int i;
 	
+#ifdef FS_IS_ext2
+	if( inode->i_file_acl )
+	  mark_fixed( inode->i_file_acl );
+#endif
 	for (i = 0; i < DIRECT_ZONES ; i++)
 	    walk_zone  ((Block *) ( i                 + inode->i_zone), mode);
 	walk_zone_ind  ((Block *) ( DIRECT_ZONES      + inode->i_zone), mode);
@@ -425,7 +444,8 @@ static void read_fixed_zones (void)
 
 	for (i=1; i < FIRST_USER_INODE; i++) {        
 	    if ((i == EXT2_ROOT_INO) ||  /* Allow optimization of root */
-		(i == bad_block_inode))  /* Done with them already */
+		(i == bad_block_inode) ||  /* Done with them already */
+		(i == journal_inode))
 		continue;
 	    if (!inode_in_use (i))
 		die ("Reserved inode is on the free list.");
@@ -527,7 +547,7 @@ static void scan_used_inodes(void)
 		printf ("DEBUG: scan_used_inodes()\n");
 	if (verbose)
 		stat_line ("Scanning inode zones...");
-	for (i=1; i<=INODES; i++) {
+	for (i=FIRST_USER_INODE; i<=INODES; i++) {
 	  	if (inode_in_use(i) && (i != bad_block_inode))
 			optimise_inode(i, 1);
                                 /* Update at least 50 times during scan */
@@ -679,6 +699,8 @@ static void sort_inodes (void)
 	inode_order_map[used_inodes++] = ROOT_INO;
 	if (bad_block_inode)
 		inode_order_map[used_inodes++] = bad_block_inode;
+	if( journal_inode )
+	  inode_order_map[used_inodes++] = journal_inode;
 
 	for (i = FIRST_USER_INODE; i <= INODES; i++)
 	{
@@ -692,6 +714,8 @@ static void sort_inodes (void)
 	   blocks next */
 	if (bad_block_inode)
 		inode_priority_map[bad_block_inode] = 126;
+	if( journal_inode )
+	  inode_priority_map[journal_inode] = 126;
 
 	/* And sort... */
 	qsort (inode_order_map, used_inodes,

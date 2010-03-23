@@ -14,10 +14,7 @@
  *
  */
 
-#include <linux/fs.h>
-#include <linux/minix_fs.h>
-#include <linux/minix_fs_i.h>
-#include <linux/minix_fs_sb.h>
+#include "minix_fs.h"
 
 #define ROOT_INO 1
 #define FIRST_USER_INODE 2
@@ -32,6 +29,8 @@ typedef unsigned short Block;
 #define INODE_BLOCKS		UPPER(INODES, MINIX_INODES_PER_BLOCK)
 #define INODE_BUFFER_SIZE	(INODE_BLOCKS * BLOCK_SIZE)
 
+#define BLOCK_SIZE_BITS 10
+#define BLOCK_SIZE (1<<BLOCK_SIZE_BITS)
 #define BITS_PER_BLOCK		(BLOCK_SIZE<<3)
 
 #define Super		(* (struct minix_super_block *) super_block_buffer)

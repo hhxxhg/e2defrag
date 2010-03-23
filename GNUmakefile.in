@@ -73,7 +73,6 @@ filesystems += ext
 endif
 ifdef USE_ext2
 PROGS += e2defrag
-PROGS += e2dump
 PROGS += e2defrag.static
 mansymlinks += e2defrag
 filesystems += ext2

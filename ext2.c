@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <values.h>
 
 #include "defrag.h"
@@ -37,7 +38,7 @@
 char const * program_name = "e2defrag";
 char const * fsck = "e2fsck";
 
-static unsigned groups;
+unsigned int groups;
 struct ext2_group_desc *bg;
 struct groups_population *gp;
 
@@ -48,6 +49,7 @@ static char *zone_map = NULL;
 #define bm_mark_zone(x) (setbit(zone_map,(x)-FIRSTZONE),changed=1)
 #define bm_unmark_zone(x) (clrbit(zone_map,(x)-FIRSTZONE),changed=1) 
 
+extern Block journal_inode;
 
 /** @postcondition E1: Super.s_inodes_per_group % 8 == 0.
     @postcondition E2: Super.s_blocks_per_group % 8 == 0.
@@ -117,6 +119,8 @@ void read_tables (void)
 					| EXT2_FEATURE_INCOMPAT_FILETYPE)))
       die( "filesystem has unsupported features");
 
+    if(Super.s_feature_compat & EXT3_FEATURE_COMPAT_HAS_JOURNAL)
+      journal_inode = 8;
     block_size = EXT2_MIN_BLOCK_SIZE << Super.s_log_block_size;
 
     groups = (Super.s_blocks_count - Super.s_first_data_block + 
@@ -237,7 +241,7 @@ void init_inode_bitmap (void)
         for (i = 0; i < groups; i++) {
                 pos = (loff_t) bg[i].bg_inode_bitmap * block_size;
                 if (debug)
-                        printf("Group:%d inode_bitmap at:%llu\n",i,pos);
+                        printf("Group:%d inode_bitmap at:%llu\n",i,(unsigned long long)pos);
                 if (pos!=nlseek(IN,pos,SEEK_SET)) 
                         die("seek failed reading inode bitmap");
            

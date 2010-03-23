@@ -597,7 +597,7 @@ static void usage(void) __attribute__((noreturn));
 
 static void usage(void)
 {
-   printf("Usage:e2dump [<option>] <device>\n");
+   printf("Usage:xdump [<option>] <device>\n");
    printf("\t-s\t\tdumps superblock\n");
    printf("\t-m\t\tdumps block allocation bitmaps in hex\n");
    printf("\t-M\t\tdumps inode allocation bitmaps in hex\n");
