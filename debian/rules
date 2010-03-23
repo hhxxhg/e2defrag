@@ -25,7 +25,7 @@ endif
 CFLAGS += -Wno-trigraphs
 
 configure: configure-stamp
-configure-stamp: patch-stamp
+configure-stamp:
 	dh_testdir
 	# Add here commands to configure the package.
 
@@ -46,7 +46,7 @@ build-stamp:
 
 	touch $@
 
-clean: unpatch
+clean:
 	dh_testdir
 	rm -f build-stamp configure-stamp
 
@@ -105,4 +105,3 @@ binary-arch: build install
 binary: binary-indep binary-arch
 .PHONY: configure build clean binary-indep binary-arch binary install
 
-include /usr/share/dpatch/dpatch.make
