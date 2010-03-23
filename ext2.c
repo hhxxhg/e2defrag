@@ -38,7 +38,7 @@
 char const * program_name = "e2defrag";
 char const * fsck = "e2fsck";
 
-static unsigned groups;
+unsigned int groups;
 struct ext2_group_desc *bg;
 struct groups_population *gp;
 
