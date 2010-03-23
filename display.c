@@ -47,11 +47,14 @@ static void _die(char const *last_words)
 static RETSIGTYPE
 tstp_signal(int dummy)
 {
+   sigset_t emptyset;
    UNUSED(dummy);
 
    endwin();
    signal(SIGTSTP,SIG_DFL);
-   sigsetmask(0);
+   /* sigsetmask(0); */
+   sigemptyset(&emptyset);
+   sigprocmask(SIG_SETMASK, &emptyset, NULL);
    /* Put us to stop */
    kill(getpid(),SIGTSTP);     
    

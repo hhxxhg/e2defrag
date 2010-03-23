@@ -54,12 +54,12 @@ struct group_table {
 } *gt;
 
 #if defined(__i386__) && defined(__GNUC__)
-static inline int bit_is_set(char * bitmap,unsigned int nr) 
+static inline int bit_is_set(const void * bitmap, unsigned int nr) 
 { 
 	int __res; 
 	__asm__ __volatile__("btl %1,%2; adcl $0,%0" 
 		:"=g" (__res) 
-		:"r" (nr),"m" (*(bitmap)),"0" (0)); 
+		:"r" (nr),"m" (*(const char*)(bitmap)),"0" (0)); 
 	return __res; 
 }
 #else
