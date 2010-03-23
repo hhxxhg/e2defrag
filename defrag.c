@@ -23,7 +23,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
-/*#include <string.h> conflicts with linux/string.h.  Ought to fix ext2.h instead.*/
+#include <string.h>
 #include <termios.h>
 #include <getopt.h>
 #include <fcntl.h>

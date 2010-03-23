@@ -10,6 +10,7 @@
 #include <config.h>
 #include <sys/types.h>
 #include <strings.h>
+#include <string.h>
 #include <stdlib.h>
 #include <ncurses.h>
 #include <stdarg.h>

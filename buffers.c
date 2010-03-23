@@ -12,7 +12,7 @@
 #include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
-/* #include <string.h> conflicts with kernel headers.  TODO: Fix kernel headers. */
+#include <string.h>
 #include <unistd.h>
 #include "defrag.h"
 

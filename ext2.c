@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <values.h>
 
 #include "defrag.h"
