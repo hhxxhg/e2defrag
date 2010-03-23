@@ -285,7 +285,12 @@ static int walk_zone_ind (Block * znr, enum walk_zone_mode mode)
         set_attr(*znr,AT_DATA);
 	if (mode == WZ_SCAN)
 		update_inode_average(*znr);
-	
+	if( mode == WZ_FIXED_BLOCKS )
+	  {
+		mark_fixed(*znr);
+		set_attr(*znr,AT_BAD);
+		badblocks++;
+	  }	
 	read_current_block(*znr, blk);
 
         if (mode == WZ_REMAP) {
@@ -329,7 +334,12 @@ static int walk_zone_dind (Block * znr, enum walk_zone_mode mode)
         set_attr(*znr,AT_DATA);
 	if (mode == WZ_SCAN)
 		update_inode_average(*znr);
-	
+	if( mode == WZ_FIXED_BLOCKS )
+	  {
+		mark_fixed(*znr);
+		set_attr(*znr,AT_BAD);
+		badblocks++;
+	  }	
 	read_current_block(*znr, blk);
 	
 	if (mode == WZ_REMAP) {
@@ -372,7 +382,12 @@ static int walk_zone_tind (Block * znr, enum walk_zone_mode mode)
         set_attr(*znr,AT_DATA);
 	if (mode == WZ_SCAN)
 		update_inode_average(*znr);
-	
+	if( mode == WZ_FIXED_BLOCKS )
+	  {
+		mark_fixed(*znr);
+		set_attr(*znr,AT_BAD);
+		badblocks++;
+	  }		
 	read_current_block(*znr, blk);
 
 	if (mode == WZ_REMAP)
