@@ -92,7 +92,22 @@ AC_SUBST(USE_$1)
 ])
 enable_fs(minix)
 enable_fs(ext)
-enable_fs(ext2)
+
+AC_ARG_ENABLE(ext2,
+[  --disable-ext2 	  Don't support ext2 filesystems.])
+if test x"$enable_ext2" = x"no"; then
+  USE_ext2=
+else
+  AC_CHECK_HEADER(ext2fs/ext2_fs.h, USE_ext2=1,
+[  if test x"$enable_ext2" = x"yes"; then
+    AC_MSG_ERROR([ext2fs/ext2_fs.h not found, cannot enable ext2 support])
+  else
+    echo "configure: note: ext2fs/ext2_fs.h not found, disabling ext2 support" 1>&2
+  fi
+  USE_ext2=])
+fi
+AC_SUBST(USE_ext2)
+
 enable_fs(xia)
 
 

@@ -22,8 +22,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
-#include <linux/ext2_fs.h>
 #include "types.h"
+#include <ext2fs/ext2_fs.h>
 #include "ext2.h"
 #include "display.h"
 
