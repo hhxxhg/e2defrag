@@ -411,6 +411,10 @@ static void walk_inode (struct d_inode *inode, enum walk_zone_mode mode)
 {
 	int i;
 	
+#ifdef FS_IS_ext2
+	if( inode->i_file_acl )
+	  mark_fixed( inode->i_file_acl );
+#endif
 	for (i = 0; i < DIRECT_ZONES ; i++)
 	    walk_zone  ((Block *) ( i                 + inode->i_zone), mode);
 	walk_zone_ind  ((Block *) ( DIRECT_ZONES      + inode->i_zone), mode);
