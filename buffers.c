@@ -252,8 +252,8 @@ static void select_buffers (int (*fn) (const Buffer *))
 static int compare_buffer_zones(const void *a, const void *b)
 {
 	Block azone, bzone;
-	azone = (*((Buffer const **) a))->dest_zone;
-	bzone = (*((Buffer const **) b))->dest_zone;
+	azone = (*((Buffer const * const *) a))->dest_zone;
+	bzone = (*((Buffer const * const *) b))->dest_zone;
 	
 	if (azone < bzone)
 		return -1;
@@ -266,8 +266,8 @@ static int compare_buffer_zones(const void *a, const void *b)
 static int compare_buffer_zones_for_read (const void *a, const void *b)
 {
 	Block azone, bzone;
-	azone = n2d((*((Buffer const **) a))->dest_zone);
-	bzone = n2d((*((Buffer const **) b))->dest_zone);
+	azone = n2d((*((Buffer const * const *) a))->dest_zone);
+	bzone = n2d((*((Buffer const * const *) b))->dest_zone);
 	
 	if (azone < bzone)
 		return -1;
