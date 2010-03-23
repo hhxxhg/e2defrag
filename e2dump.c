@@ -93,7 +93,7 @@ static inline unsigned long bit_is_set(const void * addr, int nr)
 
 #define UPPER(size,n)		((size + ((n) - 1)) / (n))
 
-#define my_printf(a...) do { if (!quiet) printf(##a); } while(0)
+#define my_printf(a...) do { if (!quiet) printf(a); } while(0)
 
 static int IN;         /* Input device handle */
 
