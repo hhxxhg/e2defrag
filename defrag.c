@@ -61,7 +61,7 @@ Block first_zone = 0;
 unsigned int zones = 0, block_size = 0;
 
 /* Global buffer variables */
-struct d_inode inode_buffer;
+char inode_buffer[1024];
 int current_inode = 0;
 char super_block_buffer[SUPERBLOCK_SIZE];
 unsigned char * inode_map = NULL;
@@ -86,8 +86,8 @@ void put_inode(void)
         if (seek_to_inode(current_inode))
             return;
 
-        if (nwrite (IN, &inode_buffer, sizeof(struct d_inode))!= 
-            sizeof(struct d_inode))
+        if (nwrite (IN, &inode_buffer, EXT2_INODE_SIZE(&Super))!= 
+            EXT2_INODE_SIZE(&Super))
 	{
 		io_error ("Can't write inode");
 		return;
@@ -100,11 +100,11 @@ int get_inode(int i)
 	if (current_inode == i)
 		return 0;
 	current_inode = 0;
-	memset (&inode_buffer, 0, sizeof(struct d_inode));
+	memset (&inode_buffer, 0, EXT2_INODE_SIZE(&Super));
         if (seek_to_inode(i))
                 return 1;
-	if (nread(IN, &inode_buffer, sizeof(struct d_inode)) 
-                 != sizeof(struct d_inode))
+	if (nread(IN, &inode_buffer, EXT2_INODE_SIZE(&Super)) 
+                 != EXT2_INODE_SIZE(&Super))
 	{
 		io_error ("Can't read inode");
 		return 1;

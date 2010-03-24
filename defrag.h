@@ -70,7 +70,7 @@ extern Block next_block_to_fill;
 extern Block first_zone;
 extern unsigned int zones, block_size;
 
-extern struct d_inode inode_buffer;
+char inode_buffer[1024];
 extern int current_inode;
 extern char super_block_buffer[];
 extern int inode_table_offset;

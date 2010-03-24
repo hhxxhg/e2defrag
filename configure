@@ -1936,8 +1936,7 @@ fi
 
 
 if test x"$GCC" = x"yes"; then
-  # Include -Werror because what warnings are issued can vary with platform.
-  CFLAGS="-pipe -Werror -Wall -W -Wunused -Wshadow -Wpointer-arith -Wbad-function-cast -Wcast-qual -Wcast-align -Wwrite-strings -Wno-sign-compare -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wmissing-noreturn -Wnested-externs $CFLAGS"
+  CFLAGS="-pipe -Wall -W -Wunused -Wshadow -Wpointer-arith -Wbad-function-cast -Wcast-qual -Wcast-align -Wwrite-strings -Wno-sign-compare -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wmissing-noreturn -Wnested-externs $CFLAGS"
 fi
 
 # Remember to change GNUmakefile.in's distclean target if you change this list.

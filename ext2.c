@@ -114,7 +114,10 @@ void read_tables (void)
       die( "Please run fsck first, filesystem is not marked valid");
 
     if((Super.s_feature_ro_compat & ~(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER
-				      | EXT2_FEATURE_RO_COMPAT_LARGE_FILE))
+				      | EXT2_FEATURE_RO_COMPAT_LARGE_FILE
+				      | EXT4_FEATURE_RO_COMPAT_HUGE_FILE
+				      | EXT4_FEATURE_RO_COMPAT_DIR_NLINK
+				      | EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE))
        || (Super.s_feature_incompat & ~(EXT2_FEATURE_INCOMPAT_COMPRESSION
 					| EXT2_FEATURE_INCOMPAT_FILETYPE)))
       die( "filesystem has unsupported features");
@@ -336,7 +339,7 @@ static void mark_group_zones(void)
   unsigned const ino_bmap_count
     = UPPER( Super.s_inodes_per_group, CHARBITS * block_size);
   unsigned const ino_tbl_count
-    = UPPER((Super.s_inodes_per_group * sizeof(struct d_inode)),block_size);
+    = UPPER((Super.s_inodes_per_group * EXT2_INODE_SIZE(&Super)),block_size);
   unsigned i;
   DCL_NEXT_SB_GRP;
 
@@ -579,7 +582,7 @@ int seek_to_inode(int i)
    
   if(nlseek( IN,
 	     ((loff_t) p->bg_inode_table * block_size
-	      + sizeof(struct d_inode) * (i % Super.s_inodes_per_group)),
+	      + EXT2_INODE_SIZE(&Super) * (i % Super.s_inodes_per_group)),
 	     SEEK_SET)
      >= 0)
     return 0;
