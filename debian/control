@@ -11,7 +11,7 @@ Depends: ${shlibs:Depends}, file
 Description: ext[234] filesystem defragmenter
  *HIGHLY EXPERIMENTAL* do not use on a filesystem that you care
  about as it likely will destroy it.
-
+ .
  As a file system is used, data tends to become more and more
  scattered across the disk, degrading performance.  A disk
  defragmenter simply re-organises the data on the disk, so that
