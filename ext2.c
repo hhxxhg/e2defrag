@@ -117,11 +117,12 @@ void read_tables (void)
 				      | EXT2_FEATURE_RO_COMPAT_LARGE_FILE
 				      | EXT4_FEATURE_RO_COMPAT_HUGE_FILE
 				      | EXT4_FEATURE_RO_COMPAT_DIR_NLINK
+				      | EXT4_FEATURE_RO_COMPAT_GDT_CSUM
 				      | EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE))
        || (Super.s_feature_incompat & ~(EXT2_FEATURE_INCOMPAT_COMPRESSION
+					| EXT4_FEATURE_INCOMPAT_FLEX_BG
 					| EXT2_FEATURE_INCOMPAT_FILETYPE)))
-      die( "filesystem has unsupported features");
-
+      die("filesystem has unsupported features");
     if(Super.s_feature_compat & EXT3_FEATURE_COMPAT_HAS_JOURNAL)
       journal_inode = 8;
     block_size = EXT2_MIN_BLOCK_SIZE << Super.s_log_block_size;

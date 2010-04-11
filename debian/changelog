@@ -1,4 +1,10 @@
-defrag (0.74) karmic; urgency=low
+defrag (0.75) lucid; urgency=low
+
+  * Added support for flex_bg and csum features
+
+ -- Phillip Susi <psusi@cfl.rr.com>  Sun, 11 Apr 2010 17:06:46 -0400
+
+defrag (0.74) lucid; urgency=low
 
   * Initial release as a native Ubuntu package
 
