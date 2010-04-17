@@ -474,10 +474,10 @@ static void read_select_set (void)
 	/* effic: Ought to clue the O/S what we're going to be reading
            (asynchronous reads). */
         if (voyer_mode) {
-	    /* TODO: This looks slightly wrong: the locations where the reading
+	    /* the locations where the reading
 	       takes place are n2d(dest_zone), not dest_zone. */
             for (i=0; i < select_set_size; i++)    
-                set_attr(select_set[i]->dest_zone,AT_READ);
+	      set_attr(n2d(select_set[i]->dest_zone),AT_READ);
             update_display();
         }
 	for (i=0; i < select_set_size; i++)

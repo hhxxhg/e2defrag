@@ -1,6 +1,8 @@
 defrag (0.75) lucid; urgency=low
 
   * Added support for flex_bg and csum features
+  * Corrected display to show blocks being read from as
+    "R" instead of the blocks they will be written to
 
  -- Phillip Susi <psusi@cfl.rr.com>  Sun, 11 Apr 2010 17:06:46 -0400
 
