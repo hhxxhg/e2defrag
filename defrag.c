@@ -29,6 +29,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <math.h>
 
 #include "defrag.h"
 #include "version.h"
@@ -214,8 +215,23 @@ static void validate_relocation_maps(void)
 
 static inline void update_inode_average (Block n)
 {
-	sum_inode_zones += n;
-	count_inode_blocks++;
+  if( (current_inode / Super.s_inodes_per_group) !=
+      (n / Super.s_blocks_per_group) ||
+      sum_inode_zones == INFINITY )
+    {
+      /* if blocks have spilled outside the native block group
+	 during the last defrag then force the average
+	 to -1 to push the inode to the right in the optimisation
+	 order, otherwise idnoes will dance back and forth on
+	 susequent defrags since their positions will reverse if
+	 their non native blocks are allocated in earlier groups */
+      sum_inode_zones = INFINITY;
+      count_inode_blocks = 1;
+    }
+  else {
+    sum_inode_zones += n;
+    count_inode_blocks++;
+  }
 }
 
 #if FS_IS_ext2
@@ -516,9 +532,9 @@ static void optimise_inode (unsigned int i, int scan)
                 
 		walk_inode(inode, WZ_SCAN);
 		if (count_inode_blocks)
-			inode_average_map[i] = 
-				(Block) (sum_inode_zones / 
-					 (float) count_inode_blocks);
+			inode_average_map[i] = sum_inode_zones != INFINITY ?
+				(Block) (sum_inode_zones / (float) count_inode_blocks) :
+				~0;
 		else
 			inode_average_map[i] = 0;
 	}
