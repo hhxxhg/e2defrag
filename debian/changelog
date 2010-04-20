@@ -5,6 +5,9 @@ defrag (0.75) lucid; urgency=low
     "R" instead of the blocks they will be written to
   * Fixed "musical blocks" bug where block positions would
     change on repeated invocations rather than being deterministic
+  * Changed block allocator to force blocks to the left instead
+    of allocating from their native block group when they have
+    been given a negative priority in the priority file
 
  -- Phillip Susi <psusi@cfl.rr.com>  Sun, 11 Apr 2010 17:06:46 -0400
 

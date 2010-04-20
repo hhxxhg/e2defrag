@@ -1,13 +1,13 @@
 /*
- * ext2.c - extfs-specific functions and data for the Linux file system 
- * degragmenter. 
+ * ext2.c - extfs-specific functions and data for the Linux file system
+ * degragmenter.
  *
  * This file is responsible for managing those data structures dependent
  * on the extfs.  Specifically, it
- * + allocates space for the various disk maps stored in memory; 
- * + reads and writes superblock information; 
+ * + allocates space for the various disk maps stored in memory;
+ * + reads and writes superblock information;
  * + reads the used-data-zones and used-inodes maps into memory
- *   (inode_map and d2n/n2d_map respectively); and, 
+ *   (inode_map and d2n/n2d_map respectively); and,
  * + once the defragmentation is complete, rewrites the new free-space
  *   map to disk.
  *
@@ -15,7 +15,7 @@
  * Copyright (C) 1992, 1993, 1997 Stephen Tweedie (sct@dcs.ed.ac.uk)
  * Copyright (C) 1992 Remy Card (card@masi.ibp.fr)
  * Copyright (C) 1991 Linus Torvalds (torvalds@kruuna.helsinki.fi)
- * 
+ *
  * This file may be redistributed under the terms of the GNU General
  * Public License.
  *
@@ -45,9 +45,9 @@ struct groups_population *gp;
 /* Joined free blocks bitmap and manipulation routines */
 static char *zone_map = NULL;
 
-#define bm_zone_in_use(x) (bit(zone_map,(x)-FIRSTZONE)) 
+#define bm_zone_in_use(x) (bit(zone_map,(x)-FIRSTZONE))
 #define bm_mark_zone(x) (setbit(zone_map,(x)-FIRSTZONE),changed=1)
-#define bm_unmark_zone(x) (clrbit(zone_map,(x)-FIRSTZONE),changed=1) 
+#define bm_unmark_zone(x) (clrbit(zone_map,(x)-FIRSTZONE),changed=1)
 
 extern Block journal_inode;
 
@@ -61,10 +61,10 @@ static void read_groups(void) {
 
    bg = malloc(sizeof(struct ext2_group_desc)*groups);
    gp = malloc(sizeof(struct groups_population)*groups);
-                
+
    if ((bg == NULL) || (gp==NULL))
       die("Out of memory allocating group descriptors");
-   
+
    memset(gp,0,sizeof(struct groups_population)*groups);
 
    if(nlseek( IN, block_size * (Super.s_first_data_block + 1), SEEK_SET) < 0)
@@ -79,7 +79,7 @@ static void read_groups(void) {
       sprintf(s, "Strange blocks_per_group (%lu) value",
               (unsigned long) Super.s_blocks_per_group);
       fatal_error(s);
-   }         
+   }
    if ((Super.s_inodes_per_group % 8) != 0) {
       sprintf(s, "Strange inodes_per_group (%lu) value",
               (unsigned long) Super.s_blocks_per_group);
@@ -87,12 +87,12 @@ static void read_groups(void) {
    }
 }
 
-/* Read the superblock and group description tables and reserve space 
+/* Read the superblock and group description tables and reserve space
  * for the remaining disk map tables (inodes, inodes & block bitmaps) */
 void read_tables (void)
 {
     loff_t end_of_device;
-	
+
     if (debug)
 	printf ("DEBUG: read_tables()\n");
     if(SUPERBLOCK_OFFSET != nlseek( IN, SUPERBLOCK_OFFSET, SEEK_SET))
@@ -106,8 +106,8 @@ void read_tables (void)
     if (Super.s_log_block_size > 2)
       die( "Invalid blocksize >4k");
 
-    /* 
-     * This modification is lousy, but better than the bug before  :-)  
+    /*
+     * This modification is lousy, but better than the bug before  :-)
      */
     if(!(Super.s_state & EXT2_VALID_FS)
        && !readonly)
@@ -127,7 +127,7 @@ void read_tables (void)
       journal_inode = 8;
     block_size = EXT2_MIN_BLOCK_SIZE << Super.s_log_block_size;
 
-    groups = (Super.s_blocks_count - Super.s_first_data_block + 
+    groups = (Super.s_blocks_count - Super.s_first_data_block +
 	      Super.s_blocks_per_group - 1) /
 	      Super.s_blocks_per_group;
 
@@ -138,9 +138,9 @@ void read_tables (void)
     /* I don't know what the exact minimum is, but it's over 50 with
        mke2fs-1.18. */
 
-    /* 
+    /*
      * Sanity check that llseek() is working OK if this is a large
-     * (>2GB) partition.  
+     * (>2GB) partition.
      */
     end_of_device = ((loff_t) ZONES - 1) << Super.s_log_block_size;
     if(end_of_device >> Super.s_log_block_size != ZONES - 1)
@@ -148,7 +148,7 @@ void read_tables (void)
 
     if(nlseek( IN, end_of_device, SEEK_SET) != end_of_device)
  	    die ("Error seeking to end of filesystem");
-	
+
     read_groups();
 
     inode_average_map = malloc (INODES * sizeof(*inode_average_map));
@@ -159,7 +159,7 @@ void read_tables (void)
     inode_priority_map = malloc (INODES * sizeof(*inode_priority_map));
     if (!inode_priority_map)
 	die ("Unable to allocate buffer for inode priorities");
-    memset (inode_priority_map, 0, 
+    memset (inode_priority_map, 0,
 	    (INODES * sizeof(*inode_priority_map)));
 
     inode_order_map = malloc (INODES * sizeof(*inode_order_map));
@@ -188,28 +188,28 @@ void show_super_stats(void) {
     char s[256];
     if (voyer_mode)
     {
-	sprintf (s, "%6lu block%s, %6lu free (%ld%%)", 
-		 (unsigned long) ZONES, (ZONES  != 1) ? "s" : "", 
+	sprintf (s, "%6lu block%s, %6lu free (%ld%%)",
+		 (unsigned long) ZONES, (ZONES  != 1) ? "s" : "",
 		 (unsigned long) FREEBLOCKSCOUNT,
 		 (100UL * FREEBLOCKSCOUNT) / ZONES);
-	add_comment(s);           
-	sprintf (s, "%6lu inode%s, %6lu free (%ld%%)", 
-		 (unsigned long) INODES, (INODES != 1) ? "s" : "", 
+	add_comment(s);
+	sprintf (s, "%6lu inode%s, %6lu free (%ld%%)",
+		 (unsigned long) INODES, (INODES != 1) ? "s" : "",
 		 (unsigned long) FREEINODESCOUNT,
 		 (100UL * FREEINODESCOUNT) / INODES);
-	add_comment(s);         
-	sprintf (s, "%6u group%s,", 
+	add_comment(s);
+	sprintf (s, "%6u group%s,",
 		 groups, (groups != 1) ? "s" : "");
 	add_comment(s);
-	display_comments("");           
+	display_comments("");
     }
     else if (show)
     {
-	printf ("%lu inode%s\n", (unsigned long) INODES, 
+	printf ("%lu inode%s\n", (unsigned long) INODES,
 		(INODES != 1) ? "s" : "");
-	printf ("%lu block%s\n", (unsigned long) ZONES, 
+	printf ("%lu block%s\n", (unsigned long) ZONES,
 		(ZONES != 1) ? "s" : "");
-	printf ("%u bad block%s\n", (unsigned int) badblocks, 
+	printf ("%u bad block%s\n", (unsigned int) badblocks,
 		(badblocks != 1) ? "s" : "");
 	printf ("Firstdatazone=%lu\n", (unsigned long) FIRSTZONE);
 	printf ("%lu free block%s\n", (unsigned long) FREEBLOCKSCOUNT,
@@ -220,28 +220,28 @@ void show_super_stats(void) {
     }
 }
 
-/* Read in the map of used/unused inodes.  
+/* Read in the map of used/unused inodes.
  */
 void init_inode_bitmap (void)
 {
   unsigned i, size;
   loff_t pos;
-  
+
   if (debug)
     printf ("DEBUG: init_inode_bitmap()\n");
-  
+
   assert( (Super.s_inodes_per_group & 7) == 0);
   /* Loose proof: checked for in read_groups (@E1).
      Relevance: Otherwise the below should round up. */
-  
+
   size = Super.s_inodes_per_group >> 3;
   /* = number of bytes per inode bitmap. */
-  
+
   inode_map = malloc (size * groups);
   if (!inode_map)
     die ("Unable to allocate inodes bitmap\n");
   memset (inode_map, 0, ((INODES + 1) / 8));
-  
+
   for (i = 0; i < groups; i++) {
     if( bg[i].bg_flags & EXT2_BG_INODE_UNINIT ) {
       if( debug )
@@ -252,7 +252,7 @@ void init_inode_bitmap (void)
       pos = (loff_t) bg[i].bg_inode_bitmap * block_size;
       if (debug)
 	printf("Group:%d inode_bitmap at:%llu\n",i,(unsigned long long)pos);
-      if (pos!=nlseek(IN,pos,SEEK_SET)) 
+      if (pos!=nlseek(IN,pos,SEEK_SET))
 	die("seek failed reading inode bitmap");
       if(nread( IN, inode_map + size * i, size) != (ssize_t) size)
 	die("error reading inode bitmap");
@@ -372,17 +372,17 @@ static void mark_group_zones(void)
 
 /* Count free blocks in each group using block allocation bitmaps.
  * We do not use bg_free_blocks_count, I'm not sure they are actually correct.
- * Blocks, reserved for superuser sometimes are not counted in 
- * bg_free_blocks_count. They are represented however in the 
+ * Blocks, reserved for superuser sometimes are not counted in
+ * bg_free_blocks_count. They are represented however in the
  * s_free_blocks_count. (10-dec-93)
- */ 
+ */
 /* (14-dec-93). bg_free_blocks sometimes are not correct, but I'm sure, that
- * there was a situation with wrong counts and the new e2fsck told nothing 
+ * there was a situation with wrong counts and the new e2fsck told nothing
  * about it. Let's see if this is true.
- * Yes it does. I've managed to spoil file system: 0 blocks are actually 
- * free, bitmap is ok, but bg_free_blocks says "76". Older versions of 
+ * Yes it does. I've managed to spoil file system: 0 blocks are actually
+ * free, bitmap is ok, but bg_free_blocks says "76". Older versions of
  * e2fsck are buggy.  (This is fixed in all recent versions of e2fsck.)
- */ 
+ */
 
 static void count_free_blocks(void)
 {
@@ -408,7 +408,7 @@ static void count_free_blocks(void)
                count++;
        gp[n].free_blocks = count;
        total_free += count;
-       if (debug) printf("Group %d, free blocks %lu\n", n, count);        
+       if (debug) printf("Group %d, free blocks %lu\n", n, count);
        if (count != bg[n].bg_free_blocks_count)
           fprintf(stderr, "Group %d: free_blocks:%u counted:%lu\n", n,
                   bg[n].bg_free_blocks_count, count);
@@ -420,17 +420,17 @@ static void count_free_blocks(void)
        char s[256];
        sprintf (s, "Free blocks count wrong, free:"
 		"%lu, reserved:%lu, counted:%lu\nRun fsck.\n",
-		(unsigned long) FREEBLOCKSCOUNT, 
+		(unsigned long) FREEBLOCKSCOUNT,
 		(unsigned long) Super.s_r_blocks_count, total_free);
        fatal_error(s);
    }
 }
 
-/* Read the map of used/unused data zones on disk.  
+/* Read the map of used/unused data zones on disk.
  * The map is held jointly in d2n_map and n2d_map, described in
  * defrag.h.  These are initialised to the identity map (d2n(i) = n2d(i)
  * = i), and then the free zone list is scanned, and all unused zones
- * are marked as zero in both d2n_map and n2d_map. 
+ * are marked as zero in both d2n_map and n2d_map.
  * Mark blocks occupied by group bitmaps and inode tables as unmovable.
  */
 
@@ -446,7 +446,7 @@ void init_zone_maps (void)
      Relevance: Otherwise the below should round up. */
 
   size = Super.s_blocks_per_group >> 3;
-  /* The last group on the disk can be shorter, 
+  /* The last group on the disk can be shorter,
    * that's why groups * s_blocks_per_group >= s_blocks
    */
   zone_map = malloc (size*groups);
@@ -460,10 +460,10 @@ void init_zone_maps (void)
       memset( zone_map + size * n, 0, size );
     } else {
       pos = (loff_t) bg[n].bg_block_bitmap * block_size;
-      if (pos!=nlseek(IN,pos,SEEK_SET)) 
+      if (pos!=nlseek(IN,pos,SEEK_SET))
 	die("seek failed reading zone bitmap");
       else if(nread( IN, zone_map + size * n, size) != (ssize_t) size)
-	die("error reading zone bitmap");        
+	die("error reading zone bitmap");
     }
   }
 
@@ -488,7 +488,7 @@ void init_zone_maps (void)
 
 /* Write the superblock inode bitmaps to disk */
 void write_tables (void)
-{       
+{
 	if (debug)
 		printf ("DEBUG: write_tables()\n");
 	if(SUPERBLOCK_OFFSET != nlseek( IN, SUPERBLOCK_OFFSET, SEEK_SET))
@@ -580,7 +580,7 @@ static void update_group_desc_csum(__u32 n)
    this. Free zones are determined by n2d_map, the macro zone_in_use(n)
    is defined in defrag.h for this purpose. The ext2fs stores the free
    zone map as a number of bitmaps, one in each group.
- */   
+ */
 void salvage_free_zones (void)
 {
   ulong bmp_zones;     /* Number of zones defined by bitmap size,
@@ -591,7 +591,7 @@ void salvage_free_zones (void)
   /* Loose proof: checked for by read_groups (@E2).
      Relevance: otherwise size calculation and memset should round up. */
 
-  bmp_zones = groups * Super.s_blocks_per_group;   
+  bmp_zones = groups * Super.s_blocks_per_group;
 
   if(verbose)
     stat_line( "Salvaging free zones list ...\n");
@@ -600,7 +600,7 @@ void salvage_free_zones (void)
   {
     unsigned n;
     for(n = 0; n < groups; n++)
-      bg[n].bg_free_blocks_count = 0;     
+      bg[n].bg_free_blocks_count = 0;
   }
 
   memset( zone_map, 0, bmp_zones / CHARBITS);
@@ -617,7 +617,7 @@ void salvage_free_zones (void)
 	next_bg_blk += Super.s_blocks_per_group;
 	n++;
       }
-      if (zone_in_use(blk) || zone_is_fixed(blk)) 
+      if (zone_in_use(blk) || zone_is_fixed(blk))
 	bm_mark_zone(blk);
       else
 	bg[n].bg_free_blocks_count++;
@@ -674,7 +674,7 @@ int seek_to_inode(int i)
   i--;
   assert( i >= 0);
   p = &bg[i / Super.s_inodes_per_group];
-   
+
   if(nlseek( IN,
 	     ((loff_t) p->bg_inode_table * block_size
 	      + EXT2_INODE_SIZE(&Super) * (i % Super.s_inodes_per_group)),
@@ -691,17 +691,17 @@ void update_group_population(ulong znr, enum walk_zone_mode mode, ulong inode)
 {
    unsigned i_group = (inode-1) / Super.s_inodes_per_group;
    unsigned z_group = (znr - Super.s_first_data_block) / Super.s_blocks_per_group;
-   
+
    assert(i_group < groups);
    assert(z_group < groups);
 
    if (mode == WZ_FIXED_BLOCKS) {
        gp[z_group].native_blocks++;     /* Count fixed blocks as native */
-       return;                           
-   }       
+       return;
+   }
    if (mode != WZ_SCAN)
        return;
-   if (i_group == z_group) 
+   if (i_group == z_group)
        gp[i_group].native_blocks++;
    else {
        gp[z_group].wants_away++;
@@ -715,7 +715,7 @@ void update_group_population(ulong znr, enum walk_zone_mode mode, ulong inode)
  * This does not necessarily mean that the number of blocks owned by
  * native inodes are equal in each group. In fact some of the groups
  * are overpopulated and some are not.
- * 
+ *
  * When we deal with an overpopulated group, we have to put its blocks
  * into some other groups.  So we have to know how many blocks we can
  * put into not-yet filled group without forcing out the native
@@ -730,7 +730,7 @@ void check_group_population(void)
    for (i=0; i < groups; i++) {
 
        /* Print data about the present situation in the groups */
-       if (verbose > 2 && !voyer_mode) {          
+       if (verbose > 2 && !voyer_mode) {
          printf( "Group:%u   native:%lu(+%lu), foreign:%lu, free:%lu\n", i,
                  gp[i].native_blocks, gp[i].wants_back,
                  gp[i].wants_away, gp[i].free_blocks);
@@ -739,7 +739,7 @@ void check_group_population(void)
        }
 
                   /* Now let's estimate how many free blocks we are going
-                   * to have after the defragmentation 
+                   * to have after the defragmentation
                    */
 
        gp[i].free_blocks += gp[i].wants_away;
@@ -748,7 +748,7 @@ void check_group_population(void)
        else
 	 gp[i].free_blocks = 0;
        gp[i].native_blocks = 0;
-       gp[i].wants_away = 0;    
+       gp[i].wants_away = 0;
 
        gp[i].next_block_to_fill = first_block;
        first_block += Super.s_blocks_per_group;
@@ -761,65 +761,70 @@ void check_group_population(void)
 
 static ulong try_other_groups(ulong inode, unsigned native_group)
 {
-   unsigned i;
-                     /* look for free place in groups below the native one */
-   for(i = native_group; i--;) {
-      if (debug)
-         printf("try_other_groups, gr:%u,  free:%lu, next:%lu last:%lu\n",
-                i,gp[i].free_blocks,gp[i].next_block_to_fill,gp[i].last_block);
-      if (gp[i].free_blocks==0)
-             continue;
-      if (gp[i].next_block_to_fill > gp[i].last_block) 
-             continue;             
-      while (zone_is_fixed(gp[i].next_block_to_fill))
-             if (++gp[i].next_block_to_fill > gp[i].last_block) 
-                   continue;
-      gp[i].free_blocks--;             
-      gp[i].wants_away++;
-      return gp[i].next_block_to_fill++;             
-   }
-                   /* and if all groups below the native are filled in, then */
-                   /* look for free space in all other groups */    
-   for (i=native_group+1; i < groups; i++) {
-      if (debug)
-         printf("try_other_groups, gr:%u,  free:%lu, next:%lu last:%lu\n",
-                i,gp[i].free_blocks,gp[i].next_block_to_fill,gp[i].last_block);
-      if (gp[i].free_blocks==0)
-             continue;
-      if (gp[i].next_block_to_fill > gp[i].last_block) 
-             continue;             
-      while (zone_is_fixed(gp[i].next_block_to_fill))
-             if (++gp[i].next_block_to_fill > gp[i].last_block) 
-                   continue;
-      gp[i].free_blocks--;             
-      gp[i].wants_away++;
-      return gp[i].next_block_to_fill++;             
-   }
-   
-   printf("Can't find a block for inode %lu\n",inode);
-   for (i=0; i < groups; i++) 
-      printf("Group:%u, native:%lu,foreign:%lu\n",i,
-             gp[i].native_blocks,gp[i].wants_away);
-   die("Internal problem\n");
-}  
+  unsigned i;
+  /* look for free place in groups below the native one */
+  for(i = native_group; i--;) {
+    if (debug)
+      printf("try_other_groups, gr:%u,  free:%lu, next:%lu last:%lu\n",
+	     i,gp[i].free_blocks,gp[i].next_block_to_fill,gp[i].last_block);
+    if (gp[i].free_blocks==0)
+      continue;
+    if (gp[i].next_block_to_fill > gp[i].last_block)
+      continue;
+    while (zone_is_fixed(gp[i].next_block_to_fill))
+      if (++gp[i].next_block_to_fill > gp[i].last_block)
+	continue;
+    gp[i].free_blocks--;
+    gp[i].wants_away++;
+    return gp[i].next_block_to_fill++;
+  }
+  /* and if all groups below the native are filled in, then */
+  /* look for free space in all other groups */
+  if( native_group == 0 )
+    native_group--; /* forcing left */
+  for (i=native_group+1; i < groups; i++) {
+    if (debug)
+      printf("try_other_groups, gr:%u,  free:%lu, next:%lu last:%lu\n",
+	     i,gp[i].free_blocks,gp[i].next_block_to_fill,gp[i].last_block);
+    if( native_group != -1 && gp[i].free_blocks==0 )
+      continue;
+    if (gp[i].next_block_to_fill > gp[i].last_block)
+      continue;
+    while (zone_is_fixed(gp[i].next_block_to_fill))
+      if (++gp[i].next_block_to_fill > gp[i].last_block)
+	continue;
+    if( gp[i].free_blocks )
+      gp[i].free_blocks--;
+    gp[i].wants_away++;
+    return gp[i].next_block_to_fill++;
+  }
+
+  printf("Can't find a block for inode %lu\n",inode);
+  for (i=0; i < groups; i++)
+    printf("Group:%u, native:%lu,foreign:%lu\n",i,
+	   gp[i].native_blocks,gp[i].wants_away);
+  die("Internal problem\n");
+}
 
 /* Try to allocate block in its group and if this fails, than in any other
- * group with sufficient free space 
+ * group with sufficient free space
  */
 
 ulong choose_block(ulong inode)
 {
-   unsigned i_group = (inode-1) / Super.s_inodes_per_group;
+  unsigned i_group = (inode-1) / Super.s_inodes_per_group;
 
-   if (gp[i_group].next_block_to_fill > gp[i_group].last_block) 
-        return try_other_groups(inode,i_group);
-   
-   while (zone_is_fixed(gp[i_group].next_block_to_fill)) {
-        if (++gp[i_group].next_block_to_fill > gp[i_group].last_block) 
-              return try_other_groups(inode,i_group);
-   }
-   gp[i_group].native_blocks++;
-   return gp[i_group].next_block_to_fill++;
+  if( inode_priority_map[inode] < 0 )
+    return try_other_groups( inode, 0 ); /* force to left most block group */
+  if (gp[i_group].next_block_to_fill > gp[i_group].last_block)
+    return try_other_groups(inode,i_group);
+
+  while (zone_is_fixed(gp[i_group].next_block_to_fill)) {
+    if (++gp[i_group].next_block_to_fill > gp[i_group].last_block)
+      return try_other_groups(inode,i_group);
+  }
+  gp[i_group].native_blocks++;
+  return gp[i_group].next_block_to_fill++;
 }
 
 /* ---------------------------------------------------------------------*/
