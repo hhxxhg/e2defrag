@@ -30,6 +30,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <math.h>
+#include <ext2fs/ext2fs.h>
 
 #include "defrag.h"
 #include "version.h"
@@ -234,13 +235,6 @@ static inline void update_inode_average (Block n)
   }
 }
 
-#if FS_IS_ext2
-# define HOLE_BLKADDR(_b) ((_b) == 0 || (_b) == EXT2_COMPRESSED_BLKADDR)
-#else
-# define HOLE_BLKADDR(_b) ((_b) == 0)
-#endif
-
-
 static int walk_zone (Block * znr, enum walk_zone_mode mode)
 {       
         Block bn = *znr;
@@ -423,13 +417,98 @@ static int walk_zone_tind (Block * znr, enum walk_zone_mode mode)
 }
 #endif /* HAS_TIND */
 
+#ifdef FS_IS_ext2
+static void walk_extents( struct ext3_extent_header *eh, enum walk_zone_mode mode )
+{
+  int ne = -1;
+  int e;
+  int i;
+  Block b;
+  struct ext3_extent *new_extents;
+  struct ext3_extent *extents = (struct ext3_extent *)eh+1;
+
+  new_extents = alloca( sizeof( struct ext3_extent ) * eh->eh_max );
+  for( e = 0; e < eh->eh_entries; e++ )
+    {
+      if( extents[e].ee_start_hi )
+	die( "ee_start_hi != 0" );
+      for( i = 0; i < extents[e].ee_len; i++ )
+	{
+	  b = extents[e].ee_start + i;
+	  walk_zone( &b, mode );
+	  if( ne == -1 ||
+	      new_extents[ne].ee_start + new_extents[ne].ee_len != b )
+	    {
+	      /* can't merge block onto last extent, so allocate new one */
+	      if( ne >= eh->eh_max )
+		die( "Too many new extents" );
+	      new_extents[++ne].ee_block = extents[e].ee_block;
+	      new_extents[ne].ee_start = b;
+	      new_extents[ne].ee_start_hi = 0;
+	      new_extents[ne].ee_len = 0;
+	      new_extents[ne].ee_block = extents[e].ee_block + i;
+	    }
+	  new_extents[ne].ee_len++;
+	}
+    }
+  /* copy replace old extents with new */
+  if( mode == WZ_REMAP )
+    {
+      eh->eh_entries = ne+1;
+      memcpy( extents, new_extents, sizeof( struct ext3_extent ) * eh->eh_entries );
+    }
+}
+
+void walk_extent_idx (struct ext3_extent_header *eh, enum walk_zone_mode mode)
+{
+  struct ext3_extent_idx *idx = (struct ext3_extent_idx *)eh+1;
+  int i;
+  char blk[MAX_BLOCK_SIZE];
+
+  if (eh->eh_depth == 0)
+    return walk_extents (eh, mode);
+  for (i = 0; i < eh->eh_entries; i++)
+    {
+      set_attr (idx[i].ei_leaf, AT_DATA);
+      if  (mode == WZ_FIXED_BLOCKS)
+	{
+	  mark_fixed (idx[i].ei_leaf);
+	  set_attr (idx[i].ei_leaf, AT_BAD);
+	  badblocks++;
+	}
+      read_current_block (idx[i].ei_leaf, blk);
+      if (mode == WZ_REMAP)
+	optimise_zone (&idx[i].ei_leaf);
+      walk_extent_idx ((struct ext3_extent_header *)&blk, mode);
+      if (!readonly && mode == WZ_REMAP)
+	write_current_block (n2d(idx[i].ei_leaf), blk);
+    }
+}
+#endif
+
 static void walk_inode (struct d_inode *inode, enum walk_zone_mode mode)
 {
 	int i;
 	
 #ifdef FS_IS_ext2
-	if( inode->i_file_acl )
-	  mark_fixed( inode->i_file_acl );
+	if (inode->i_file_acl)
+	  mark_fixed (inode->i_file_acl);
+	if (inode->i_flags & EXT4_EXTENTS_FL)
+	  {
+	    struct ext3_extent_header *eh;
+
+	    eh = (struct ext3_extent_header *)&inode->i_block[0];
+	    if (eh->eh_magic != EXT3_EXT_MAGIC)
+	      die ("Bad eh_magic");
+	    if (eh->eh_max != 4)
+	      die ("Bad eh_max");
+	    if ( !voyer_mode &&
+		 (verbose > 1) ||
+		 (verbose == 1 && eh->eh_depth) )
+	      stat_line ("Inode %u has depth %u", current_inode, eh->eh_depth);
+	    walk_extent_idx (eh, mode);
+	    return;
+	  }
 #endif
 	for (i = 0; i < DIRECT_ZONES ; i++)
 	    walk_zone  ((Block *) ( i                 + inode->i_zone), mode);
@@ -450,7 +529,7 @@ static void read_fixed_zones (void)
 	if (get_inode(bad_block_inode))
 	    die ("Can't read bad block inode.");
 	
-	walk_inode(&inode_buffer, WZ_FIXED_BLOCKS);
+	walk_inode((struct ext2_inode *)&inode_buffer, WZ_FIXED_BLOCKS);
     }
 #if FS_IS_ext2
     {
@@ -468,7 +547,7 @@ static void read_fixed_zones (void)
 	    if (get_inode(i))
 		die ("Can't read reserved inode.");
 	    
-	    walk_inode(&inode_buffer, WZ_FIXED_BLOCKS);
+	    walk_inode((struct ext2_inode *)&inode_buffer, WZ_FIXED_BLOCKS);
 	}
 	badblocks = tmp;
     }                    
@@ -822,7 +901,7 @@ int main (int argc, char ** argv)
 		IN = open (device_name, O_RDWR);
         }
 	if (IN < 0)
-		die("unable to open '%s'");
+		die("unable to open device");
 	for (i = 0 ; i < 3; i++)
 		sync();
 	read_tables ();

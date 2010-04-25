@@ -121,6 +121,7 @@ void read_tables (void)
 				      | EXT4_FEATURE_RO_COMPAT_EXTRA_ISIZE))
        || (Super.s_feature_incompat & ~(EXT2_FEATURE_INCOMPAT_COMPRESSION
 					| EXT4_FEATURE_INCOMPAT_FLEX_BG
+					| EXT3_FEATURE_INCOMPAT_EXTENTS
 					| EXT2_FEATURE_INCOMPAT_FILETYPE)))
       die("filesystem has unsupported features");
     if(Super.s_feature_compat & EXT3_FEATURE_COMPAT_HAS_JOURNAL)
