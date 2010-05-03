@@ -14,11 +14,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/uio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <linux/fcntl.h>
+#include <errno.h>
 #include "defrag.h"
 
-#define sizeof_buffer (sizeof(*pool) + block_size)
-#define buffer(i) ((Buffer *) \
-		     (((char *) pool) + (i) * sizeof_buffer))
+#define buffer(i) (&pool[i])
 
 /* The buffer pool is a unified buffer space containing both the
    pending pool and the rescue pool.  The pending pool holds buffers
@@ -53,10 +56,15 @@ unsigned count_buffer_writes = 0, count_buffer_reads = 0;
 int count_write_groups = 0, count_read_groups = 0;
 int count_buffer_migrates = 0, count_buffer_forces = 0;
 int count_buffer_read_aheads = 0;
+int last_block = -1;
+int queue_count;
+char queue_direction;
+#define QUEUE_MAX 1024
+struct iovec queue[QUEUE_MAX];
 
 /* We will hash buffered blocks on the least significant bits of the
    block's dest_zone */
-#define HASH_SIZE 1024
+#define HASH_SIZE 16384
 static Buffer * (hash[HASH_SIZE]) = {0};
 #define hash_list(zone) (hash[((unsigned) (zone)) % (HASH_SIZE)])
 
@@ -79,14 +87,19 @@ void io_error(const char *message)
 void init_buffer_tables()
 {
 	int i;
+	char *bp;
 	if (debug)
 		printf ("DEBUG: init_buffer_tables()\n");
 	
 	memset( hash, 0, HASH_SIZE * sizeof(*hash));
-	pool = (Buffer *) malloc (pool_size * sizeof_buffer);
+	pool = (Buffer *) malloc (pool_size * sizeof(Buffer));
 	if (!pool)
 		die ("Unable to allocate buffer pool.");
-	memset (pool, 0, pool_size * sizeof_buffer);
+	memset (pool, 0, pool_size * sizeof(Buffer));
+	bp = malloc ((pool_size * block_size) + 4096);
+	bp = (char *)(((unsigned long)bp + 0xFFFUL) & ~0xFFFUL);
+	if (!bp)
+	  die ("Unable to allocate buffer space.");
 	select_set = (Buffer **) malloc (pool_size *
 					 sizeof(*select_set));
 	if (!select_set)
@@ -96,6 +109,8 @@ void init_buffer_tables()
 	for (i=0; i<pool_size-1; i++)
 	{
 		buffer(i)->next = buffer(i+1);
+		buffer(i)->datap = bp;
+		bp += block_size;
 	}
 	buffer(pool_size-1)->next = 0;
 	first_free_buffer = buffer(0);
@@ -356,6 +371,89 @@ void read_current_block (Block nnr, char * addr)
 	}
 }
 
+void queue_flush()
+{
+  ssize_t read;
+
+  if (queue_direction) {
+    read = writev (IN, queue, queue_count);
+    if (read != queue_count * block_size) {
+      sprintf (tmps, "writev failed: %s\n", strerror (errno));
+      io_error (tmps);
+    }
+  }
+  else {
+    read = readv (IN, queue, queue_count);
+    if (read != queue_count * block_size) {
+      sprintf (tmps, "readv failed: %s\n", strerror (errno));
+      io_error (tmps);
+    }
+  }
+  queue_count = 0;
+  last_block = -1;
+}
+
+void queue_read_current_block (Block nnr, char * addr)
+{
+  loff_t offset;
+
+  assert( (block_size > 0) && (block_size <= MAX_BLOCK_SIZE)
+	  && ((block_size & (block_size - 1)) == 0));
+  assert (queue_direction == 0);
+  if (debug)
+    printf ("DEBUG: read_block (&%ld, %p)\n", 
+	    (long) nnr, addr);
+  if (!nnr)
+    return;
+  check_zone_nr(nnr);
+
+  offset = (loff_t) block_size * nnr;
+  if (last_block+1 != nnr) {
+    queue_flush();
+    if (offset != nlseek (IN, offset, SEEK_SET))
+	{
+	  io_error ("seek failed in read_block");
+	  return;
+	}
+  }
+  last_block = nnr;
+  queue[queue_count].iov_base = addr;
+  queue[queue_count].iov_len = block_size;
+  if (++queue_count == QUEUE_MAX)
+    queue_flush();
+}
+
+void queue_write_current_block (Block nnr, char * addr)
+{
+  loff_t offset;
+
+  assert( (block_size > 0) && (block_size <= MAX_BLOCK_SIZE)
+	  && ((block_size & (block_size - 1)) == 0));
+  assert (queue_direction == 1);
+  
+  if (debug)
+    printf ("DEBUG: read_block (&%ld, %p)\n", 
+	    (long) nnr, addr);
+  if (!nnr)
+    return;
+  check_zone_nr(nnr);
+
+  offset = (loff_t) block_size * nnr;
+  if (last_block+1 != nnr) {
+    queue_flush();
+    if (offset != nlseek (IN, offset, SEEK_SET))
+	{
+	  io_error ("seek failed in read_block");
+	  return;
+	}
+  }
+  last_block = nnr;
+  queue[queue_count].iov_base = addr;
+  queue[queue_count].iov_len = block_size;
+  if (++queue_count == QUEUE_MAX)
+    queue_flush();
+}
+
 /*
  * write_current_block writes block nr to disk.
  */
@@ -427,7 +525,7 @@ void read_buffer_data (Buffer *b)
 	/* Don't bother reading here if we are in readonly mode; there
 	   will be no need to write it back at any time. */
 	if (!readonly)
-		read_current_block (source, b->data);
+		queue_read_current_block (source, b->datap);
 	d2n(source) = 0;
 	n2d(b->dest_zone) = 0;
 	b->full = 1;
@@ -442,7 +540,7 @@ void write_buffer_data_at (Buffer *b, Block dest)
 			(unsigned long) b->dest_zone, 
 			(unsigned long) dest);
 	assert (b->in_use & b->full);
-	write_current_block (dest, b->data);
+	queue_write_current_block (dest, b->datap);
 	assert (!n2d(b->dest_zone));
 	assert (!d2n(dest));
 	d2n(dest) = b->dest_zone;
@@ -480,12 +578,13 @@ static void read_select_set (void)
 	      set_attr(n2d(select_set[i]->dest_zone),AT_READ);
             update_display();
         }
+	queue_direction = 0;
 	for (i=0; i < select_set_size; i++)
 	{
 		assert (!select_set[i]->full);
 		read_buffer_data (select_set[i]);
 	}
-        
+        queue_flush();
         clear_attr(AT_READ);
 	count_read_groups++;
 }
@@ -503,12 +602,14 @@ static void write_select_set (void)
                 set_attr(select_set[i]->dest_zone,AT_WRITE);
             update_display();
         }
+	queue_direction = 1;
 	for (i=0; i < select_set_size; i++)
 	{
 		assert (select_set[i]->in_use &&
 			select_set[i]->full);
 		write_buffer_data(select_set[i]);
 	}
+	queue_flush();
         if (voyer_mode)
                 clear_attr(AT_WRITE);
 	count_write_groups++;
@@ -655,7 +756,7 @@ void remap_disk_blocks (void)
 		printf ("DEBUG: remap_disk_blocks()\n");
 	if (verbose)
 		stat_line ("Relocating disk blocks - this could take a while.");
-
+       	assert (fcntl (IN, F_SETFL, O_DIRECT)==0);
 	/* Walk through each disk block sequentially, rescuing 
 	   previous contents and reading the new contents into the 
 	   output buffer. */
@@ -739,4 +840,5 @@ void remap_disk_blocks (void)
 	assert (!count_output_buffers);
 	assert (!count_rescue_buffers);
 	assert (free_buffers == pool_size);
+       	assert (fcntl (IN, F_SETFL, 0)==0);
 }
