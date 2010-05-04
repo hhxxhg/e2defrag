@@ -828,6 +828,27 @@ ulong choose_block(ulong inode)
   return gp[i_group].next_block_to_fill++;
 }
 
+int gp_stack_count;
+
+struct groups_population *push_group_population()
+{
+  struct groups_population *ogp;
+
+  gp_stack_count++;
+  ogp = malloc(sizeof(struct groups_population)*groups);
+  if (!ogp)
+    die ("Out of memory");
+  memcpy (ogp, gp, sizeof(struct groups_population)*groups);
+  return ogp;
+}
+
+void pop_group_population (struct groups_population *ogp)
+{
+  gp_stack_count--;
+  memcpy (gp, ogp, sizeof(struct groups_population)*groups);
+  free (ogp);
+}
+
 /* ---------------------------------------------------------------------*/
 void show_reserved_blocks(void)
 {

@@ -122,55 +122,55 @@ int get_inode(int i)
    pointer; don't move any data just yet. */
 static void optimise_zone (Block *znr)
 {
-	Block ox, oy, nx, ny;
+  Block ox, oy, nx, ny;
 #if FS_IS_xia        
-        /* In the Xia FS the i_blocks parameter (size of inode's 
-         * data in 512-bytes blocks) is stored in the high bytes 
-         * of the first three i_zone elements.
-         */
-        Block i_blocks = (*znr) & 0xFF000000;
-        *znr &= 0x00FFFFFF;
+  /* In the Xia FS the i_blocks parameter (size of inode's 
+   * data in 512-bytes blocks) is stored in the high bytes 
+   * of the first three i_zone elements.
+   */
+  Block i_blocks = (*znr) & 0xFF000000;
+  *znr &= 0x00FFFFFF;
 #endif        
-	if (debug)
-		printf ("DEBUG: optimise_zone (&%lu)\n", (ulong) *znr);
-	changed = 1;
+  if (debug)
+    printf ("DEBUG: optimise_zone (&%lu)\n", (ulong) *znr);
+  changed = 1;
 
-	ox = *znr;
-	check_zone_nr(ox);
-        set_attr(ox,AT_SELECTED);
+  ox = *znr;
+  check_zone_nr(ox);
+  set_attr(ox,AT_SELECTED);
 
-	/* Don't attempt to relocate a fixed (probably bad) block! */
-	if (zone_is_fixed(*znr)) {
+  /* Don't attempt to relocate a fixed (probably bad) block! */
+  if (zone_is_fixed(*znr)) {
 #if FS_IS_xia
-                *znr |= i_blocks;
+    *znr |= i_blocks;
 #endif                
-		return;
-        }        
+    return;
+  }        
 #if FS_IS_ext2
-	ny = choose_block(current_inode);
+  ny = choose_block(current_inode);
 #else
-	while (zone_is_fixed(next_block_to_fill)) {
-		next_block_to_fill++;
-        }        
-	ny = next_block_to_fill++;
+  while (zone_is_fixed(next_block_to_fill)) {
+    next_block_to_fill++;
+  }        
+  ny = next_block_to_fill++;
 #endif  
-	check_zone_nr(ny);
-
-	nx = d2n(ox);
-	oy = n2d(ny);
-
-	/* Update the zone maps. */
-	d2n(ox) = ny;
-	if (oy)
-		d2n(oy) = nx;
-	n2d(nx) = oy;
-	n2d(ny) = ox;
-	if (!readonly) {
-		*znr = ny;
+  check_zone_nr(ny);
+  if (!gp_stack_count)
+    {
+      nx = d2n(ox);
+      oy = n2d(ny);
+      
+      /* Update the zone maps. */
+      d2n(ox) = ny;
+      if (oy)
+	d2n(oy) = nx;
+      n2d(nx) = oy;
+      n2d(ny) = ox;
+    }
+  *znr = ny;
 #if FS_IS_xia
-                *znr |= i_blocks;
+  *znr |= i_blocks;
 #endif                
-        }        
 }
 
 #ifndef NODEBUG
@@ -418,7 +418,9 @@ static int walk_zone_tind (Block * znr, enum walk_zone_mode mode)
 #endif /* HAS_TIND */
 
 #ifdef FS_IS_ext2
-static void walk_extents( struct ext3_extent_header *eh, enum walk_zone_mode mode )
+static void walk_extents (struct ext3_extent_header *eh,
+			  enum walk_zone_mode mode,
+			  struct ext3_extent_header *alt)
 {
   int ne = -1;
   int e;
@@ -427,28 +429,46 @@ static void walk_extents( struct ext3_extent_header *eh, enum walk_zone_mode mod
   struct ext3_extent *new_extents;
   struct ext3_extent *extents = (struct ext3_extent *)eh+1;
 
-  new_extents = alloca( sizeof( struct ext3_extent ) * eh->eh_max );
+  new_extents = alloca( sizeof( struct ext3_extent ) * (eh->eh_max+1) );
+  /* if we have been passed any overflow entries to merge, do so */
+  if (alt->eh_entries) {
+    memcpy (new_extents, (struct ext3_extent *)(alt+1),
+	    alt->eh_entries * sizeof(struct ext3_extent));
+    ne = alt->eh_entries;
+    alt->eh_entries = 0;
+  }
   for( e = 0; e < eh->eh_entries; e++ )
     {
       if( extents[e].ee_start_hi )
 	die( "ee_start_hi != 0" );
+      if (extents[e].ee_len > EXT_INIT_MAX_LEN)
+	die ("ee_len > EXT_INIT_MAX_LEN");
       for( i = 0; i < extents[e].ee_len; i++ )
 	{
 	  b = extents[e].ee_start + i;
 	  walk_zone( &b, mode );
 	  if( ne == -1 ||
-	      new_extents[ne].ee_start + new_extents[ne].ee_len != b )
+	      new_extents[ne].ee_start + new_extents[ne].ee_len != b ||
+	      new_extents[ne].ee_len == EXT_INIT_MAX_LEN )
 	    {
 	      /* can't merge block onto last extent, so allocate new one */
-	      if( ne >= eh->eh_max )
-		die( "Too many new extents" );
-	      new_extents[++ne].ee_block = extents[e].ee_block;
+	      if (ne < eh->eh_max)
+		ne++;
+	      else {
+		/* switch to overflow */
+		if (eh == alt)
+		  die( "Overflowed alternate extent stack" );
+		ne = 0;
+		new_extents = (struct ext3_extent *)alt+1;
+		eh = alt;
+	      }
+	      new_extents[ne].ee_block = extents[e].ee_block + i;
 	      new_extents[ne].ee_start = b;
 	      new_extents[ne].ee_start_hi = 0;
 	      new_extents[ne].ee_len = 0;
 	      new_extents[ne].ee_block = extents[e].ee_block + i;
 	    }
-	  new_extents[ne].ee_len++;
+	    new_extents[ne].ee_len++;
 	}
     }
   /* copy replace old extents with new */
@@ -459,36 +479,120 @@ static void walk_extents( struct ext3_extent_header *eh, enum walk_zone_mode mod
     }
 }
 
-void walk_extent_idx (struct ext3_extent_header *eh, enum walk_zone_mode mode)
+/* Walk the given extent block.  If the header says this is level 0, then
+ * the entries are the extents, so pass to walk_extents, otherwise, they
+ * are ext3_extent_idx entries that point to lower level children.  We
+ * remap children in two passes.  The first pass is a trial run that
+ * figures out how many extents we can reduce the child extent blocks to.
+ * The second pass actually remaps the children.  If we can reduce the
+ * total children to a number that will fit in this level, then we promote
+ * the children by copying them up to this level, reducing the depth of
+ * this level by 1 and freeing the child index blocks in the process.
+ * The promote parameter is 1 on entry if we are allowed to promote.
+ * On the first pass we tell the child they are allowed to promote,
+ * then only if all children can promote, do we allow them to do so
+ * on the second pass.  This is to keep the tree balanced and its depth
+ * uniform throughout.  
+ * In the event that a child needs more extents than can fit, it will
+ * return the additional extents in the alt extent block which we then
+ * will pass to the next child to try and migrate them over if there is
+ * room.  Once we have walked all children, any entries still in the
+ * overflow stack need a new child.  If we have room to add a child
+ * pointer at this level, allocate one and do so, then walk that
+ * to store the overflow there.  If we can't allocate a new child then
+ * we return the overflow and the parent has to deal with it.  At the
+ * root level in the inode, any remaining extents after walking mean we
+ * have to increase the depth of the tree.  In that case we move the
+ * current entries to the overflow, allocate a new child, and the
+ * second pass walk will move the children down. */
+
+signed int walk_extent_idx (struct ext3_extent_header *eh,
+		      enum walk_zone_mode mode,
+		      struct ext3_extent_header *alt,
+		      char promote)
 {
   struct ext3_extent_idx *idx = (struct ext3_extent_idx *)eh+1;
   int i;
   char blk[MAX_BLOCK_SIZE];
+  char nblk[MAX_BLOCK_SIZE];
+  struct ext3_extent_header *neh = (struct ext3_extent_idx *)&nblk;
+  struct ext3_extent_idx *nidx = (struct ext3_extent_idx *)neh+1;
+  struct ext3_extent_header *ceh = (struct ext3_extent_header *)&blk;
+  struct groups_population *ogp;
+  char pass;
+  int children;
+  Block b;
+  signed int ret = 0;
+  int ne;
 
-  if (eh->eh_depth == 0)
-    return walk_extents (eh, mode);
-  for (i = 0; i < eh->eh_entries; i++)
-    {
-      set_attr (idx[i].ei_leaf, AT_DATA);
-      if  (mode == WZ_FIXED_BLOCKS)
-	{
-	  mark_fixed (idx[i].ei_leaf);
-	  set_attr (idx[i].ei_leaf, AT_BAD);
-	  badblocks++;
-	}
-      read_current_block (idx[i].ei_leaf, blk);
-      if (mode == WZ_REMAP)
-	optimise_zone (&idx[i].ei_leaf);
-      walk_extent_idx ((struct ext3_extent_header *)&blk, mode);
-      if (!readonly && mode == WZ_REMAP)
-	write_current_block (n2d(idx[i].ei_leaf), blk);
+  if (eh->eh_depth == 0) {
+    walk_extents (eh, mode, alt);
+    return 0;
+  }
+  /* if we have been passed any overflow entries to merge, do so */
+  if (alt->eh_entries) {
+    memcpy (nidx, (struct ext3_extent_idx *)(alt+1),
+	    alt->eh_entries * sizeof(struct ext3_extent_idx));
+    ne = alt->eh_entries;
+    alt->eh_entries = 0;
+  } else ne = 0;
+  for (pass = 0; pass < 2; pass++) {
+    if (!pass && mode == WZ_REMAP)
+      ogp = push_group_population();
+    for (i = 0, children = 0; i < eh->eh_entries; i++)
+      {
+	set_attr (idx[i].ei_leaf, AT_DATA);
+	if (mode == WZ_FIXED_BLOCKS)
+	  {
+	    mark_fixed (idx[i].ei_leaf);
+	    set_attr (idx[i].ei_leaf, AT_BAD);
+	    badblocks++;
+	  }
+	b = idx[i].ei_leaf;
+	read_current_block (b, blk);
+	if (mode == WZ_REMAP)
+	  if (!(pass && promote)) {
+	    optimise_zone (&b);
+	    if (pass)
+	      idx[i].ei_leaf = b;
+	  }
+	  else {
+	    n2d(d2n(idx[i].ei_leaf)) = 0;
+	    d2n(idx[i].ei_leaf) = 0;
+	    ret--;
+	  }
+	ret += walk_extent_idx (ceh, mode, alt, promote);
+	if (ceh->eh_depth && ceh->eh_depth != eh->eh_depth)
+	  promote = 0;
+	if (mode == WZ_REMAP && pass)
+	  if (promote)
+	    memcpy (nidx+children, ceh+1, ceh->eh_entries*sizeof(*idx));
+	  else if (!readonly)
+	    write_current_block (n2d(idx[i].ei_leaf), blk);
+	children += ceh->eh_entries;
+      }
+    if (mode != WZ_REMAP)
+      break;
+    if (!pass) {
+      if (children+1 >= eh->eh_max)
+	promote = 0;
+      pop_group_population (ogp);
+    } else if (promote) {
+      eh->eh_depth--;
+      if (children > eh->eh_max)
+	die ("Too many children to merge");
+      eh->eh_entries = children;
+      memcpy( idx, nidx, sizeof(*idx) * children );
     }
+  }
+  return ret;
 }
 #endif
 
 static void walk_inode (struct d_inode *inode, enum walk_zone_mode mode)
 {
 	int i;
+	__s64 blocks;
 	
 #ifdef FS_IS_ext2
 	if (inode->i_file_acl)
@@ -496,17 +600,30 @@ static void walk_inode (struct d_inode *inode, enum walk_zone_mode mode)
 	if (inode->i_flags & EXT4_EXTENTS_FL)
 	  {
 	    struct ext3_extent_header *eh;
+	    struct ext3_extent_header *alt;
 
+	    alt = alloca (4096);
+	    alt->eh_magic = EXT3_EXT_MAGIC;
+	    alt->eh_entries = 0;
+	    alt->eh_max = (4096 - sizeof (struct ext3_extent_header)) /
+	      sizeof (struct ext3_extent);
+	    alt->eh_depth = 0;
 	    eh = (struct ext3_extent_header *)&inode->i_block[0];
 	    if (eh->eh_magic != EXT3_EXT_MAGIC)
 	      die ("Bad eh_magic");
 	    if (eh->eh_max != 4)
 	      die ("Bad eh_max");
 	    if ( !voyer_mode &&
-		 (verbose > 1) ||
-		 (verbose == 1 && eh->eh_depth) )
+		 (verbose > 1 ||
+		  (verbose == 1 && eh->eh_depth)) )
 	      stat_line ("Inode %u has depth %u", current_inode, eh->eh_depth);
-	    walk_extent_idx (eh, mode);
+	    blocks = ((long long)inode->osd2.linux2.l_i_blocks_hi) << 16;
+	    blocks |= inode->i_blocks;
+	    if (inode->i_flags & EXT4_HUGE_FILE_FL)
+	      blocks += walk_extent_idx (eh, mode, alt, 1);
+	    blocks += (walk_extent_idx (eh, mode, alt, 1) * (EXT2_BLOCK_SIZE (&Super) / 512));
+	    inode->osd2.linux2.l_i_blocks_hi = blocks>>32;
+	    inode->i_blocks = blocks;
 	    return;
 	  }
 #endif
