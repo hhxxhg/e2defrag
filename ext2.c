@@ -815,7 +815,7 @@ ulong choose_block(ulong inode)
 {
   unsigned i_group = (inode-1) / Super.s_inodes_per_group;
 
-  if( inode_priority_map[inode] < 0 )
+  if( inode_priority_map[inode] > 0 )
     return try_other_groups( inode, 0 ); /* force to left most block group */
   if (gp[i_group].next_block_to_fill > gp[i_group].last_block)
     return try_other_groups(inode,i_group);
