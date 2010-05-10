@@ -540,7 +540,8 @@ void write_buffer_data_at (Buffer *b, Block dest)
 			(unsigned long) b->dest_zone, 
 			(unsigned long) dest);
 	assert (b->in_use & b->full);
-	queue_write_current_block (dest, b->datap);
+	if (!readonly)
+		queue_write_current_block (dest, b->datap);
 	assert (!n2d(b->dest_zone));
 	assert (!d2n(dest));
 	d2n(dest) = b->dest_zone;
@@ -584,7 +585,8 @@ static void read_select_set (void)
 		assert (!select_set[i]->full);
 		read_buffer_data (select_set[i]);
 	}
-        queue_flush();
+	if (!readonly)
+		queue_flush();
         clear_attr(AT_READ);
 	count_read_groups++;
 }
@@ -609,7 +611,8 @@ static void write_select_set (void)
 			select_set[i]->full);
 		write_buffer_data(select_set[i]);
 	}
-	queue_flush();
+	if (!readonly)
+		queue_flush();
         if (voyer_mode)
                 clear_attr(AT_WRITE);
 	count_write_groups++;
