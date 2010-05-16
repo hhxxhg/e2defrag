@@ -422,13 +422,19 @@ static void walk_extents (struct ext3_extent_header *eh,
 			  enum walk_zone_mode mode,
 			  struct ext3_extent_header *alt)
 {
-  int ne = -1;
-  int e;
-  int i;
+  int ne = -1; /* new extent index */
+  int e; /* extent index */
+  int i; /* block index */
   Block b;
   struct ext3_extent *new_extents;
   struct ext3_extent *extents = (struct ext3_extent *)eh+1;
+  __u16 max_len;
+  __u16 uninitialized = (extents[0].ee_len-1) & 0x8000;
+  __u16 last_uninit;
+  __u16 ee_len = uninitialized ? (extents[0].ee_len & 0x7FFF) : extents[0].ee_len;
 
+  if (uninitialized && ee_len == 0)
+    ee_len = EXT_UNINIT_MAX_LEN;
   new_extents = alloca( sizeof( struct ext3_extent ) * (eh->eh_max+1) );
   /* if we have been passed any overflow entries to merge, do so */
   if (alt->eh_entries) {
@@ -439,19 +445,28 @@ static void walk_extents (struct ext3_extent_header *eh,
   }
   for( e = 0; e < eh->eh_entries; e++ )
     {
+      last_uninit = uninitialized;
+      uninitialized = (extents[e].ee_len-1) & 0x8000;
+      ee_len = uninitialized ? (extents[e].ee_len & 0x7FFF) : extents[e].ee_len;
+      if (uninitialized && ee_len == 0)
+	ee_len = EXT_UNINIT_MAX_LEN;
       if( extents[e].ee_start_hi )
 	die( "ee_start_hi != 0" );
-      if (extents[e].ee_len > EXT_INIT_MAX_LEN)
-	die ("ee_len > EXT_INIT_MAX_LEN");
-      for( i = 0; i < extents[e].ee_len; i++ )
+      if (uninitialized)
+	max_len = EXT_UNINIT_MAX_LEN;
+      else max_len = EXT_INIT_MAX_LEN;
+      for( i = 0; i < ee_len; i++ )
 	{
 	  b = extents[e].ee_start + i;
 	  walk_zone( &b, mode );
 	  if( ne == -1 ||
 	      new_extents[ne].ee_start + new_extents[ne].ee_len != b ||
-	      new_extents[ne].ee_len == EXT_INIT_MAX_LEN )
+	      new_extents[ne].ee_len == max_len ||
+	      uninitialized != last_uninit )
 	    {
 	      /* can't merge block onto last extent, so allocate new one */
+	      if (ne != -1)
+		new_extents[ne].ee_len |= uninitialized;
 	      if (ne < eh->eh_max)
 		ne++;
 	      else {
@@ -467,10 +482,13 @@ static void walk_extents (struct ext3_extent_header *eh,
 	      new_extents[ne].ee_start_hi = 0;
 	      new_extents[ne].ee_len = 0;
 	      new_extents[ne].ee_block = extents[e].ee_block + i;
+	      last_uninit = uninitialized;
 	    }
 	    new_extents[ne].ee_len++;
 	}
     }
+  if (ne != -1)
+    new_extents[ne].ee_len |= uninitialized;
   /* copy replace old extents with new */
   if( mode == WZ_REMAP )
     {
@@ -522,7 +540,7 @@ signed int walk_extent_idx (struct ext3_extent_header *eh,
   char pass;
   int children;
   Block b;
-  signed int ret = 0;
+  signed int ret;
   int ne;
 
   if (eh->eh_depth == 0) {
@@ -537,6 +555,7 @@ signed int walk_extent_idx (struct ext3_extent_header *eh,
     alt->eh_entries = 0;
   } else ne = 0;
   for (pass = 0; pass < 2; pass++) {
+    ret = 0;
     if (!pass && mode == WZ_REMAP)
       ogp = push_group_population();
     for (i = 0, children = 0; i < eh->eh_entries; i++)
