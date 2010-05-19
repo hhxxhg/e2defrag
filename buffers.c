@@ -186,7 +186,8 @@ static void free_buffer (Buffer *b)
 	assert (first_free_buffer ? free_buffers : !free_buffers);
 	/* Assert : throwing away a buffer's data is illegal unless 
 	   the zone is on disk somewhere. */ 
-	assert (n2d(b->dest_zone));
+	if (b->btype != FORCE)
+		assert (n2d(b->dest_zone));
 	b->in_use = 0;
 
 	/* Unlink this buffer from the hash table */
@@ -204,6 +205,7 @@ static void free_buffer (Buffer *b)
 	switch (b->btype)
 	{
 	case OUTPUT:
+	case FORCE:
 		count_output_buffers--;
 		break;
 	case RESCUE:
@@ -238,6 +240,10 @@ static void set_buffer_type (Buffer *b, BufferType btype)
 		break;
 	case RESCUE:
 		count_rescue_buffers++;
+		break;
+	case FORCE:
+		count_output_buffers++;
+		count_buffer_forces++;
 		break;
 	}
 	assert ((count_rescue_buffers + count_output_buffers +
@@ -432,7 +438,7 @@ void queue_write_current_block (Block nnr, char * addr)
   assert (queue_direction == 1);
   
   if (debug)
-    printf ("DEBUG: read_block (&%ld, %p)\n", 
+    printf ("DEBUG: write_block (&%ld, %p)\n", 
 	    (long) nnr, addr);
   if (!nnr)
     return;
@@ -443,7 +449,7 @@ void queue_write_current_block (Block nnr, char * addr)
     queue_flush();
     if (offset != nlseek (IN, offset, SEEK_SET))
 	{
-	  io_error ("seek failed in read_block");
+	  io_error ("seek failed in write_block");
 	  return;
 	}
   }
@@ -542,11 +548,14 @@ void write_buffer_data_at (Buffer *b, Block dest)
 	assert (b->in_use & b->full);
 	if (!readonly)
 		queue_write_current_block (dest, b->datap);
-	assert (!n2d(b->dest_zone));
-	assert (!d2n(dest));
-	d2n(dest) = b->dest_zone;
-	n2d(b->dest_zone) = dest;
-	count_buffer_writes++;
+	if (b->btype != FORCE) {
+		assert (b->btype == OUTPUT);
+		assert (!n2d(b->dest_zone));
+		assert (!d2n(dest));
+		d2n(dest) = b->dest_zone;
+		n2d(b->dest_zone) = dest;
+		count_buffer_writes++;
+	}
 }
 
 void write_buffer_data (Buffer *b)
@@ -629,7 +638,7 @@ static void free_select_set(void)
 /* A few useful buffer selection predicates... */
 static int output_buffer_p (const Buffer *b)
 {
-	return (b->btype == OUTPUT);
+	return (b->btype == OUTPUT || b->btype == FORCE);
 }
 
 static int empty_buffer_p (const Buffer *b)
@@ -735,16 +744,33 @@ static void get_some_buffer_space(void)
 		stat_line ("Pool too full - forcing buffers...");
 	for (i = select_set_size-1; i >= ((select_set_size*3)/4); i--)
 	{
+		Buffer **p;
 		while (d2n(dest))
 			dest--;
-		write_buffer_data_at (select_set[i], dest);
-		free_buffer (select_set[i]);
-		count_buffer_forces++;
+		assert (select_set[i]->in_use & select_set[i]->full);
+		assert (!n2d(select_set[i]->dest_zone));
+		assert (!d2n(dest));
+		if (debug)
+			printf ("Forcing buffer from %d to %d\n", select_set[i]->dest_zone, dest);
+		/* Unlink buffer from the hash table */
+		p = hash_lookup (select_set[i]->dest_zone);
+		assert (p);
+		assert ((*p) == select_set[i]);
+		*p = select_set[i]->next;
+		/* Link the buffer into the hash table with new dest */
+		select_set[i]->next = hash_list(dest);
+		hash_list(dest) = select_set[i];
+		d2n(dest) = select_set[i]->dest_zone;
+		n2d(select_set[i]->dest_zone) = dest;
+		select_set[i]->dest_zone = dest;
+		assert (select_set[i]->btype == RESCUE);
+		set_buffer_type (select_set[i], FORCE);
 		count++;
 	}
 	if (verbose>1)
 		stat_line (" %d buffers recovered.", count);
 	select_set_size = 0;
+	flush_output_pool();
 }
 
 void remap_disk_blocks (void)

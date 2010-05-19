@@ -135,7 +135,7 @@ extern char * fixed_map;
 typedef struct Buffer Buffer;
 struct Buffer
 {
-	BufferType btype : 1;
+	BufferType btype : 2;
 	unsigned int in_use : 1;
 	unsigned int full : 1; /* contains data */
 	Buffer *next;

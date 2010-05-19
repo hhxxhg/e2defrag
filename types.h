@@ -18,7 +18,7 @@
 enum walk_zone_mode {WZ_SCAN, WZ_REMAP, WZ_FIXED_BLOCKS};
 
 /* Block/buffer management prototypes */
-enum BufferType { OUTPUT, RESCUE };
+enum BufferType { OUTPUT, RESCUE, FORCE };
 typedef enum BufferType BufferType;
 	
 #endif /* !_DEFRAG_TYPES_H */
