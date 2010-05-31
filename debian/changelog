@@ -1,3 +1,22 @@
+defrag (0.76) lucid; urgency=low
+
+  * Added support for ext4 extents
+  * Optimizations: Use O_DIRECT io and readv/writev to batch
+    requests and avoid polluting the buffer cache and wasting
+    cpu time copying to/from it.  Also increased the buffer
+    hash table size which saved a good bit of cpu time.
+  * Fixed priority polarity: Positive priority means move
+    blocks to the left, negative means to the right.
+  * Fixed force behavior.  We were forcing one block at a time
+    in reverse order and not updating the display to show the
+    forces.  The reverse order was causing horrid performance.
+  * New extent based block map code.  The old double array system
+    needed 600 mb of ram just for the relocation maps on a 320 gb
+    drive.  It is now possible to defrag a Terrabyte+ fs without
+    dozens of gb of ram.
+
+ -- Phillip Susi <psusi@cfl.rr.com>  Mon, 31 May 2010 11:48:39 -0400
+
 defrag (0.75) lucid; urgency=low
 
   * Added support for flex_bg and csum features

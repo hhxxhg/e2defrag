@@ -94,7 +94,7 @@ struct groups_population {
 ulong choose_block (ulong inode);
 void check_group_population (void);
 void update_group_population (ulong znr, enum walk_zone_mode mode, ulong inode);
-struct groups_population *push_group_population();
+struct groups_population *push_group_population(void);
 void pop_group_population (struct groups_population *ogp);
 
 extern int gp_stack_count;

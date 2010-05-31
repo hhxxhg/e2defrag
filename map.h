@@ -10,9 +10,7 @@
 
 #ifndef MAP_H
 
-typedef unsigned long Block;
-
-void map_init();
+void map_init(void);
 Block map_forward_get (Block b);
 Block map_reverse_get (Block b);
 void map_forward_set (Block old, Block new);

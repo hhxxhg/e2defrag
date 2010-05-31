@@ -34,6 +34,7 @@
 
 #include "defrag.h"
 #include "version.h"
+#include "map.h"
 
 #ifndef NODEBUG
 int debug = 0;
@@ -71,7 +72,6 @@ Block *inode_average_map = NULL;
 signed char *inode_priority_map = NULL;
 int *inode_order_map = NULL;
 char * fixed_map = NULL;
-Block *n2d_map = NULL, *d2n_map = NULL;
 
 /* Local variables */
 static float sum_inode_zones;
@@ -157,15 +157,8 @@ static void optimise_zone (Block *znr)
   check_zone_nr(ny);
   if (!gp_stack_count)
     {
-      nx = d2n(ox);
-      oy = n2d(ny);
-      
       /* Update the zone maps. */
-      d2n(ox) = ny;
-      if (oy)
-	d2n(oy) = nx;
-      n2d(nx) = oy;
-      n2d(ny) = ox;
+      map_forward_set (ox, ny);
     }
   *znr = ny;
 #if FS_IS_xia
@@ -180,10 +173,10 @@ static void validate_relocation_maps(void)
 
 	for (i=first_zone; i < zones; i++)
 	{
-		if (n2d(i))
-			assert (d2n(n2d(i)) == i);
-		if (d2n(i))
-			assert (n2d(d2n(i)) == i);
+		if (map_reverse_get (i))
+			assert (map_forward_get (map_reverse_get (i)) == i);
+		if (map_forward_get (i))
+			assert (map_reverse_get(map_forward_get(i)) == i);
 	}
 }
 #endif
@@ -318,7 +311,7 @@ static int walk_zone_ind (Block * znr, enum walk_zone_mode mode)
 	   "virtual" zone number through n2d_map to find the real zone 
 	   number */
 	if (blk_chg && !readonly)
-		write_current_block (n2d(*znr), blk);
+		write_current_block (map_reverse_get(*znr), blk);
 	if (mode != WZ_REMAP) {
         	assert (!result);
 		assert (!blk_chg);
@@ -367,7 +360,7 @@ static int walk_zone_dind (Block * znr, enum walk_zone_mode mode)
 	   back to real disk blocks using the n2d map.  This also
 	   applies to optimising triple indirection blocks below. */
 	if (blk_chg && !readonly)
-		write_current_block (n2d(*znr), blk);
+		write_current_block (map_reverse_get(*znr), blk);
 
 	if (mode != WZ_REMAP)
 		assert ((!blk_chg) && (!result));
@@ -409,7 +402,7 @@ static int walk_zone_tind (Block * znr, enum walk_zone_mode mode)
 	for (i = 0; i < INODES_PER_BLOCK; i++)
 		blk_chg |= walk_zone_dind (i + (Block *) blk, mode);
 	if (blk_chg && !readonly)
-		write_current_block (n2d(*znr), blk);
+		write_current_block (map_reverse_get(*znr), blk);
 
 	if (mode != WZ_REMAP)
 		assert ((!blk_chg) && (!result));
@@ -576,8 +569,7 @@ signed int walk_extent_idx (struct ext3_extent_header *eh,
 	      idx[i].ei_leaf = b;
 	  }
 	  else {
-	    n2d(d2n(idx[i].ei_leaf)) = 0;
-	    d2n(idx[i].ei_leaf) = 0;
+	    map_forward_set (idx[i].ei_leaf, 0);
 	    ret--;
 	  }
 	ret += walk_extent_idx (ceh, mode, alt, promote);
@@ -587,7 +579,7 @@ signed int walk_extent_idx (struct ext3_extent_header *eh,
 	  if (promote)
 	    memcpy (nidx+children, ceh+1, ceh->eh_entries*sizeof(*idx));
 	  else if (!readonly)
-	    write_current_block (n2d(idx[i].ei_leaf), blk);
+	    write_current_block (map_reverse_get(idx[i].ei_leaf), blk);
 	children += ceh->eh_entries;
       }
     if (mode != WZ_REMAP)
@@ -788,6 +780,8 @@ static void scan_used_inodes(void)
                 }        
         }
         update_display();
+	if (debug)
+		dump_extents();
 }
 
 /* Optimise the disk map.  This involves passing twice over the
@@ -815,6 +809,8 @@ static void optimise_used_inodes(void)
 
         }                
         update_display();
+	if (debug)
+		dump_extents();
 }
 
 /* Read the inode priority file to assign priorities to each inode.
@@ -1048,6 +1044,7 @@ int main (int argc, char ** argv)
                 show = 1;
         }  
         if (voyer_mode)  init_screen(ZONES);
+	map_init();
 	init_buffer_tables ();
 	init_zone_maps ();
 	init_inode_bitmap ();

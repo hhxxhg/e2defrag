@@ -75,31 +75,10 @@ extern int current_inode;
 extern char super_block_buffer[];
 extern int inode_table_offset;
 
-/* n2d_map and d2n_map contain the zone movement maps.  Whenever a zone is
-   moved, these maps are updated to allow the current occupant of a zone
-   to be mapped to its original location, and the original location of any
-   zone data to be mapped to its current location.
-
-   When a zone was originally empty, the d2n_map will contain zero at
-   that location to reflect the fact that there was no original occupant
-   of that zone is not to be found.  The n2d_map will also be zero for
-   blocks which do not currently hold any useful data and which may be
-   overwritten freely.
-
-   o2n_map contains the final translation from  old to new disc
-   blocks, and is used to update inode block tables and indirection
-   blocks.
-
-   inode_map and fixed_map maintain flags recording which inodes are in
-   use, and which blocks are unmovable, respectively.
-*/
-
 extern unsigned char * inode_map;
 extern Block *inode_average_map;
 extern signed char *inode_priority_map;
 extern int *inode_order_map;
-
-extern Block *n2d_map, *d2n_map, *o2n_map;
 
 /* Manipulate the inode map */
 #if FS_IS_ext2
@@ -115,13 +94,8 @@ extern Block *n2d_map, *d2n_map, *o2n_map;
   #define unmark_inode(x)	(clrbit (inode_map, (x)), changed = 1)
 #endif /* !FS_IS_ext2 */
 
-/* Manipulate the block translation maps */
-#define n2d(x)		(n2d_map[(x)-first_zone])
-#define d2n(x)		(d2n_map[(x)-first_zone])
-#define o2n(x)		(o2n_map[(x)-first_zone])
-
-#define unmark_zone(x)	(d2n(x) = 0, n2d(x) = 0, changed = 1)
-#define zone_in_use(x)	(n2d(x) != 0)
+#define unmark_zone(x)	(map_forward_set(x, 0))
+#define zone_in_use(x)	(map_reverse_get(x) != 0)
 
 /* Manipulate the fixed block map */
 extern char * fixed_map;

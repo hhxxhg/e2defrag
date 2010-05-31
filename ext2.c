@@ -30,6 +30,7 @@
 
 #include "defrag.h"
 #include "display.h"
+#include "map.h"
 
 #ifndef CHARBITS
 # define CHARBITS 8
@@ -167,13 +168,6 @@ void read_tables (void)
     if (!inode_order_map)
 	die ("Unable to allocate buffer for inode order");
     memset (inode_order_map, 0, (INODES * sizeof(*inode_order_map)));
-
-    d2n_map = malloc ((ZONES - FIRSTZONE) * sizeof (*d2n_map));
-    if (!d2n_map)
-	die ("Unable to allocate zones map\n");
-    n2d_map = malloc ((ZONES - FIRSTZONE) * sizeof (*n2d_map));
-    if (!n2d_map)
-	die ("Unable to allocate zones map\n");
 
     fixed_map = malloc (((ZONES - FIRSTZONE) / 8) + 1);
     if (!fixed_map)
@@ -474,13 +468,7 @@ void init_zone_maps (void)
     {
       if (bm_zone_in_use(i))
 	{
-	  d2n(i) = i;
-	  n2d(i) = i;
-	}
-      else
-	{
-	  d2n(i) = 0;
-	  n2d(i) = 0;
+	  map_forward_set (i, i);
 	}
     }
   count_free_blocks();

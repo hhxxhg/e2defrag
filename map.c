@@ -10,6 +10,7 @@
 #include <malloc.h>
 #include <assert.h>
 #include <stdio.h>
+#include "defrag.h"
 #include "map.h"
 
 struct map_extent {
@@ -69,18 +70,6 @@ static int reverse_search (struct map_extent *e, Block *b)
 		return 1;
 }
 
-static int reverse_search_add (struct map_extent *e, Block *b)
-{
-	if (e->new <= *b && (e->new + e->count) >= *b)
-		return 0;
-	else if ((e->new-1) <= *b && (e->new + e->count + 1) >= *b)
-		return 0;
-	else if (e->new > *b)
-		return -1;
-	else if (e->new < *b)
-		return 1;
-}
-
 void map_init()
 {
 	forward_map = g_tree_new_full ((GCompareDataFunc)forward_compare,
@@ -123,91 +112,192 @@ Block map_reverse_get (Block b)
 
 void map_forward_set (Block old, Block new)
 {
-	struct map_extent *e;
+	struct map_extent *e, *es1 = NULL, *es2 = NULL;
+	char add = new ? 1 : 0;
 
+	if (old == 0)
+		goto ret;
 	e = g_tree_search (forward_map, (GCompareFunc)forward_search, &old);
-	if (!e)
-		e = g_tree_search (forward_map, (GCompareFunc)forward_search_add, &old);
 	if (e) {
-		if (e->old <= old && (e->old + e->count) >= old) {
-			/* exact match, may have to split */
-			if (old - e->old + e->new == new)
-				return; /* already has new value, nothing to do */
-			if (e->count == 0) {
-				g_tree_remove (reverse_map, e);
-				if (new == 0) {
-					/* delete entry */
-					g_tree_remove (forward_map, e);
-					free (e);
-					return;
-				}
-				e->new = new;
-				g_tree_insert (reverse_map, e, e);
-			}
-			else if (e->old == old) {
-				/* head split */
-				g_tree_remove (forward_map, e);
-				g_tree_remove (reverse_map, e);
-				e->old++;
-				e->new++;
-				e->count--;
-				g_tree_insert (forward_map, e, e);
-				g_tree_insert (reverse_map, e, e);
-				goto add;
-			} else if (e->old+e->count == old) {
-				/* tail split */
-				e->count--;
-			} else {
-				/* center split */
-				/* add new extent for blocks after */
-				struct map_extent *ne = malloc (sizeof(struct map_extent));
-				assert (ne);
-				ne->count = e->count - old;
-				/* truncate existing extent to blocks before */
-				e->count = old - e->old - 1;
-				ne->new = e->new + e->count + 2;
-				ne->old = e->old + e->count + 2;
-				g_tree_insert (forward_map, ne, ne);
-				g_tree_insert (reverse_map, ne, ne);
-				/* now add the new extent */
-				goto add;
-			}
-		} else {
-			/* got an extent just before or after we may
-			   be able to merge with */
-			if (e->old-1 == old && e->new-1 == new) {
-				/* head merge */
-				g_tree_remove (forward_map, e);
-				g_tree_remove (reverse_map, e);
-				e->old--;
-				e->new--;
-				e->count++;
-				g_tree_insert (forward_map, e, e);
-				g_tree_insert (reverse_map, e, e);
-			} else if (e->old+e->count+1 == old && e->new+e->count+1 == new) {
-				/* tail merge */
-				e->count++;
-			} else goto add; /* can't merge */
+		/* exact match, may have to split */
+		if (old - e->old + e->new == new)
+			goto ret; /* already has new value, nothing to do */
+		if (e->count == 0) {
+			/* delete entry */
+			g_tree_remove (reverse_map, e);
+			g_tree_remove (forward_map, e);
+			free (e);
 		}
-	} else {
-	add:
-		if (new == 0) /* 0 = no entry, so do nothing */
-			return;
-		/* simple case, no existing extent so add one */
-		e = malloc (sizeof(struct map_extent));
-		assert (e);
-		e->old = old;
-		e->new = new;
-		e->count = 0;
+		else if (e->old == old) {
+			/* head split */
+			g_tree_remove (forward_map, e);
+			g_tree_remove (reverse_map, e);
+			e->old++;
+			e->new++;
+			e->count--;
+			assert (e->count >= 0);
+			es1 = e;
+		} else if (e->old+e->count == old) {
+			/* tail split */
+			g_tree_remove (forward_map, e);
+			g_tree_remove (reverse_map, e);
+			e->count--;
+			assert (e->count >=0);
+			es1 = e;
+		} else {
+			/* center split */
+			/* add new extent for blocks after */
+			struct map_extent *ne = malloc (sizeof(struct map_extent));
+			assert (ne);
+			g_tree_remove (forward_map, e);
+			g_tree_remove (reverse_map, e);
+			ne->count = e->count - (old - e->old) - 1;
+			/* truncate existing extent to blocks before */
+			e->count = old - e->old - 1;
+			ne->new = e->new + e->count + 2;
+			ne->old = e->old + e->count + 2;
+			es1 = e;
+			es2 = ne;
+			assert (e->count >= 0);
+			assert (ne->count >= 0);
+			/* now add the new extent */
+		}
+	}
+	/* first need to remove the reverse mapping for the destination */
+	e = g_tree_search (reverse_map, (GCompareFunc)reverse_search, &new);
+	if (!e) {
+		if (es1 && reverse_search (es1, &new) == 0) {
+			e = es1;
+			es1 = NULL;
+		}
+		else if (es2 && reverse_search (es2, &new) == 0) {
+			e = es2;
+			es2 = NULL;
+		}
+	}
+	if (e) {
+		/* exact match, may have to split */
+		if (e->count == 0) {
+			g_tree_remove (forward_map, e);
+			g_tree_remove (reverse_map, e);
+			free (e);
+		}
+		else if (e->new == new) {
+			/* head split */
+			g_tree_remove (forward_map, e);
+			g_tree_remove (reverse_map, e);
+			e->old++;
+			e->new++;
+			e->count--;
+			assert (g_tree_search (forward_map, (GCompareFunc)forward_search, &e->old) == 0);
+			assert (g_tree_search (reverse_map, (GCompareFunc)reverse_search, &e->new) == 0);
+			g_tree_insert (forward_map, e, e);
+			g_tree_insert (reverse_map, e, e);
+			assert (e->count >= 0);
+		} else if (e->new+e->count == new) {
+			/* tail split */
+			g_tree_remove (forward_map, e);
+			g_tree_remove (reverse_map, e);
+			e->count--;
+			assert (g_tree_search (forward_map, (GCompareFunc)forward_search, &e->old) == 0);
+			assert (g_tree_search (reverse_map, (GCompareFunc)reverse_search, &e->new) == 0);
+			g_tree_insert (forward_map, e, e);
+			g_tree_insert (reverse_map, e, e);
+			assert (e->count >=0);
+		} else {
+			/* center split */
+			/* add new extent for blocks after */
+			struct map_extent *ne = malloc (sizeof(struct map_extent));
+			assert (ne);
+			g_tree_remove (forward_map, e);
+			g_tree_remove (reverse_map, e);
+			ne->count = e->count - (new - e->new) - 1;
+			/* truncate existing extent to blocks before */
+			e->count = new - e->new - 1;
+			ne->new = e->new + e->count + 2;
+			ne->old = e->old + e->count + 2;
+			assert (g_tree_search (forward_map, (GCompareFunc)forward_search, &e->old) == 0);
+			assert (g_tree_search (reverse_map, (GCompareFunc)reverse_search, &e->new) == 0);
+			assert (g_tree_search (forward_map, (GCompareFunc)forward_search, &ne->old) == 0);
+			assert (g_tree_search (reverse_map, (GCompareFunc)reverse_search, &ne->new) == 0);
+			g_tree_insert (forward_map, e, e);
+			g_tree_insert (reverse_map, e, e);
+			g_tree_insert (forward_map, ne, ne);
+			g_tree_insert (reverse_map, ne, ne);
+			assert (e->count >= 0);
+			assert (ne->count >= 0);
+			/* now add the new extent */
+		}
+	}
+	if (es1) {
+		assert (g_tree_search (forward_map, (GCompareFunc)forward_search, &es1->old) == 0);
+		assert (g_tree_search (reverse_map, (GCompareFunc)reverse_search, &es1->new) == 0);
+		g_tree_insert (forward_map, es1, es1);
+		g_tree_insert (reverse_map, es1, es1);
+	}
+	if (es2) {
+		assert (g_tree_search (forward_map, (GCompareFunc)forward_search, &es2->old) == 0);
+		assert (g_tree_search (reverse_map, (GCompareFunc)reverse_search, &es2->new) == 0);
+		g_tree_insert (forward_map, es2, es2);
+		g_tree_insert (reverse_map, es2, es2);
+	}
+	if (!add)
+		goto ret;
+	old++;
+	new++;
+	e = g_tree_search (forward_map, (GCompareFunc)forward_search, &old);
+	if (e && e->new == new) {
+		/* head merge */
+		g_tree_remove (forward_map, e);
+		g_tree_remove (reverse_map, e);
+		e->old--;
+		e->new--;
+		e->count++;
+		assert (g_tree_search (forward_map, (GCompareFunc)forward_search, &e->old) == 0);
+		assert (g_tree_search (reverse_map, (GCompareFunc)reverse_search, &e->new) == 0);
 		g_tree_insert (forward_map, e, e);
 		g_tree_insert (reverse_map, e, e);
+		goto ret;
 	}
+	old -= 2;
+	new -= 2;
+	e = g_tree_search (forward_map, (GCompareFunc)forward_search, &old);
+	if (e && (e->new + e->count) == new) {
+		/* tail merge */
+		g_tree_remove (forward_map, e);
+		g_tree_remove (reverse_map, e);
+		e->count++;
+		assert (g_tree_search (forward_map, (GCompareFunc)forward_search, &e->old) == 0);
+		assert (g_tree_search (reverse_map, (GCompareFunc)reverse_search, &e->new) == 0);
+		g_tree_insert (forward_map, e, e);
+		g_tree_insert (reverse_map, e, e);
+		goto ret;
+	}
+	old++;
+	new++;
+	/* simple case, no existing extent so add one */
+	e = malloc (sizeof(struct map_extent));
+	assert (e);
+	e->old = old;
+	e->new = new;
+	e->count = 0;
+	assert (!g_tree_search (forward_map, forward_search, &e->old));
+	assert (!g_tree_search (reverse_map, reverse_search, &e->new));
+	g_tree_insert (forward_map, e, e);
+	g_tree_insert (reverse_map, e, e);
+ ret:
+	return;
 }
 
 static gboolean dump_extent (struct map_extent *e, void *unused1, void *unused2)
 {
 	printf ("old = %d, new = %d, count = %d\n", e->old, e->new, e->count);
 	return 0;
+}
+
+void dump_extents (void)
+{
+	g_tree_foreach (forward_map, (GTraverseFunc)dump_extent, NULL);
 }
 
 #if 0

@@ -5,7 +5,7 @@ Maintainer: Phillip Susi <psusi@cfl.rr.com>
 Standards-Version: 3.6.2.0
 Build-Depends: debhelper (>= 4.0.0), libncurses-dev, bzip2, e2fslibs-dev, autoconf2.13, automake1.4
 
-Package: e2defrag
+Package: defrag
 Architecture: any
 Depends: ${shlibs:Depends}, file
 Description: ext[234] filesystem defragmenter

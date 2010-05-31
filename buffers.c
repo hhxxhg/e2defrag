@@ -20,6 +20,7 @@
 #include <linux/fcntl.h>
 #include <errno.h>
 #include "defrag.h"
+#include "map.h"
 
 #define buffer(i) (&pool[i])
 
@@ -187,7 +188,7 @@ static void free_buffer (Buffer *b)
 	/* Assert : throwing away a buffer's data is illegal unless 
 	   the zone is on disk somewhere. */ 
 	if (b->btype != FORCE)
-		assert (n2d(b->dest_zone));
+		assert (map_reverse_get(b->dest_zone));
 	b->in_use = 0;
 
 	/* Unlink this buffer from the hash table */
@@ -287,8 +288,8 @@ static int compare_buffer_zones(const void *a, const void *b)
 static int compare_buffer_zones_for_read (const void *a, const void *b)
 {
 	Block azone, bzone;
-	azone = n2d((*((Buffer const * const *) a))->dest_zone);
-	bzone = n2d((*((Buffer const * const *) b))->dest_zone);
+	azone = map_reverse_get((*((Buffer const * const *) a))->dest_zone);
+	bzone = map_reverse_get((*((Buffer const * const *) b))->dest_zone);
 	
 	if (azone < bzone)
 		return -1;
@@ -502,13 +503,13 @@ void write_current_block (Block nnr, char * addr)
 void read_old_block (Block onr, char *addr)
 {
 	check_zone_nr(onr);
-	read_current_block (d2n(onr), addr);
+	read_current_block (map_forward_get(onr), addr);
 }
 
 void write_old_block (Block onr, char *addr)
 {
 	check_zone_nr(onr);
-	write_current_block (d2n(onr), addr);
+	write_current_block (map_forward_get(onr), addr);
 }
 
 
@@ -527,13 +528,12 @@ void read_buffer_data (Buffer *b)
 	assert (b->in_use);
 	if (b->full)
 		return;
-	source = n2d(b->dest_zone);
+	source = map_reverse_get (b->dest_zone);
 	/* Don't bother reading here if we are in readonly mode; there
 	   will be no need to write it back at any time. */
 	if (!readonly)
 		queue_read_current_block (source, b->datap);
-	d2n(source) = 0;
-	n2d(b->dest_zone) = 0;
+	map_forward_set (source, 0);
 	b->full = 1;
 	count_buffer_reads++;
 	return;
@@ -550,10 +550,9 @@ void write_buffer_data_at (Buffer *b, Block dest)
 		queue_write_current_block (dest, b->datap);
 	if (b->btype != FORCE) {
 		assert (b->btype == OUTPUT);
-		assert (!n2d(b->dest_zone));
-		assert (!d2n(dest));
-		d2n(dest) = b->dest_zone;
-		n2d(b->dest_zone) = dest;
+		assert (!map_reverse_get(b->dest_zone));
+		assert (!map_forward_get(dest));
+		map_forward_set (dest, b->dest_zone);
 		count_buffer_writes++;
 	}
 }
@@ -585,7 +584,7 @@ static void read_select_set (void)
 	    /* the locations where the reading
 	       takes place are n2d(dest_zone), not dest_zone. */
             for (i=0; i < select_set_size; i++)    
-	      set_attr(n2d(select_set[i]->dest_zone),AT_READ);
+	      set_attr(map_reverse_get(select_set[i]->dest_zone),AT_READ);
             update_display();
         }
 	queue_direction = 0;
@@ -713,7 +712,7 @@ static void get_some_buffer_space(void)
 	{
 		if (buffer(i)->in_use &&
 		    buffer(i)->btype == RESCUE &&
-		    d2n(buffer(i)->dest_zone) == 0)
+		    map_forward_get(buffer(i)->dest_zone) == 0)
 		{
 			set_buffer_type(buffer(i), OUTPUT);
 			count++;
@@ -745,11 +744,11 @@ static void get_some_buffer_space(void)
 	for (i = select_set_size-1; i >= ((select_set_size*3)/4); i--)
 	{
 		Buffer **p;
-		while (d2n(dest))
+		while (map_forward_get (dest))
 			dest--;
 		assert (select_set[i]->in_use & select_set[i]->full);
-		assert (!n2d(select_set[i]->dest_zone));
-		assert (!d2n(dest));
+		assert (!map_reverse_get(select_set[i]->dest_zone));
+		assert (!map_forward_get(dest));
 		if (debug)
 			printf ("Forcing buffer from %d to %d\n", select_set[i]->dest_zone, dest);
 		/* Unlink buffer from the hash table */
@@ -760,8 +759,7 @@ static void get_some_buffer_space(void)
 		/* Link the buffer into the hash table with new dest */
 		select_set[i]->next = hash_list(dest);
 		hash_list(dest) = select_set[i];
-		d2n(dest) = select_set[i]->dest_zone;
-		n2d(select_set[i]->dest_zone) = dest;
+		map_forward_set (dest, select_set[i]->dest_zone);
 		select_set[i]->dest_zone = dest;
 		assert (select_set[i]->btype == RESCUE);
 		set_buffer_type (select_set[i], FORCE);
@@ -810,7 +808,7 @@ void remap_disk_blocks (void)
 		
 		/* Use the reverse relocation map to obtain the block 
 		   which should go in this space */
-		source = n2d(dest);
+		source = map_reverse_get (dest);
 		/* Zero means this block cannot be found on disk.
 		   Either it should remain empty (it may  be a bad
 		   block), or it has already been read into the rescue
@@ -849,7 +847,7 @@ void remap_disk_blocks (void)
 		   the final destination of the block currently 
 		   residing in the destination zone by looking up the 
 		   forward relocation map. */
-		dest2 = d2n(dest);
+		dest2 = map_forward_get (dest);
 		/* Zero means that the dest block may be safely 
 		   overwritten. */
 		if (!dest2)
