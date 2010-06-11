@@ -164,10 +164,10 @@ void read_tables (void)
     memset (inode_priority_map, 0,
 	    (INODES * sizeof(*inode_priority_map)));
 
-    inode_order_map = malloc (INODES * sizeof(*inode_order_map));
+    inode_order_map = malloc ((INODES-FREEINODESCOUNT) * sizeof(*inode_order_map));
     if (!inode_order_map)
 	die ("Unable to allocate buffer for inode order");
-    memset (inode_order_map, 0, (INODES * sizeof(*inode_order_map)));
+    memset (inode_order_map, 0, ((INODES-FREEINODESCOUNT) * sizeof(*inode_order_map)));
 
     fixed_map = malloc (((ZONES - FIRSTZONE) / 8) + 1);
     if (!fixed_map)

@@ -78,7 +78,7 @@ extern int inode_table_offset;
 extern unsigned char * inode_map;
 extern Block *inode_average_map;
 extern signed char *inode_priority_map;
-extern int *inode_order_map;
+extern __u32 *inode_order_map;
 
 /* Manipulate the inode map */
 #if FS_IS_ext2

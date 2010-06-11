@@ -70,7 +70,7 @@ char super_block_buffer[SUPERBLOCK_SIZE];
 unsigned char * inode_map = NULL;
 Block *inode_average_map = NULL;
 signed char *inode_priority_map = NULL;
-int *inode_order_map = NULL;
+__u32 *inode_order_map = NULL;
 char * fixed_map = NULL;
 
 /* Local variables */
@@ -931,8 +931,10 @@ static void sort_inodes (void)
 
 	for (i = FIRST_USER_INODE; i <= INODES; i++)
 	{
-		if (inode_in_use(i))
+		if (inode_in_use(i)) {
 			inode_order_map[used_inodes++] = i;
+			assert (used_inodes < (INODES-FREEINODESCOUNT));
+		}
 	}
 	/* Artificially give root inode high priority; it will be the
 	   first thing on the disk */
