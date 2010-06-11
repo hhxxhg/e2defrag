@@ -41,10 +41,7 @@ sbindir = @sbindir@
 transform = @program_transform_name@
 man8ext = .8
 
-USE_minix = @USE_minix@
-USE_ext = @USE_ext@
 USE_ext2 = @USE_ext2@
-USE_xia = @USE_xia@
 
 # In modern versions of glibc, defining _FILE_OFFSET_BITS as 64 makes
 # off_t 64 bits, and things like open and lseek should work fine on
@@ -61,30 +58,13 @@ manpages = defrag frag
 mansymlinks =
 filesystems =
 
-ifdef USE_minix
-PROGS += mdefrag
-mansymlinks += mdefrag
-filesystems += minix
-endif
-ifdef USE_ext
-PROGS += edefrag
-mansymlinks += edefrag
-filesystems += ext
-endif
 ifdef USE_ext2
 PROGS += e2defrag
-PROGS += e2defrag.static
 mansymlinks += e2defrag
 filesystems += ext2
 endif
-ifdef USE_xia
-PROGS += xdefrag
-PROGS += xdump
-mansymlinks += xdefrag
-filesystems += xia
-endif
 
-OBJS = defrag.o buffers.o display.o misc.o llseek.o
+OBJS = defrag.o buffers.o display.o misc.o llseek.o map.o
 
 all:	$(PROGS)
 
@@ -96,13 +76,7 @@ endif
 frag: frag.c
 	$(CC) $(CFLAGS) $(ALL_CPPFLAGS) $(LDFLAGS) $< -o $@
 
-mdefrag:	libminix.a
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
-edefrag:	libext.a
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
 e2defrag:	libext2.a
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
-xdefrag:	libxia.a
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 e2defrag.static:	display-plain.o libext2.a
@@ -110,32 +84,15 @@ e2defrag.static:	display-plain.o libext2.a
 
 e2dump:		e2dump.ext2.o libext2.a
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
-xdump:		xdump.xia.o libxia.a
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
 
-libminix.a: libminix.a($(OBJS:.o=.minix.o) minix.minix.o)
-	$(RANLIB) $@
-libext.a: libext.a($(OBJS:.o=.ext.o) ext.ext.o)
-	$(RANLIB) $@
 libext2.a: libext2.a($(OBJS:.o=.ext2.o) ext2.ext2.o)
 	$(RANLIB) $@
-libxia.a: libxia.a($(OBJS:.o=.xia.o) xia.xia.o)
-	$(RANLIB) $@
-
-%.minix.o: %.c
-	$(CC) $(CFLAGS) $(ALL_CPPFLAGS) -DFS_IS_minix -c -o $@ $<
-
-%.ext.o : %.c
-	$(CC) $(CFLAGS) $(ALL_CPPFLAGS) -DFS_IS_ext -c -o $@ $<
 
 %.ext2.o : %.c
 	$(CC) $(CFLAGS) $(ALL_CPPFLAGS) -DFS_IS_ext2 -c -o $@ $<
 
 display-plain.o: display-plain.c
 	$(CC) $(CFLAGS) $(ALL_CPPFLAGS) -DFS_IS_ext2 -c -o $@ $<
-
-%.xia.o : %.c
-	$(CC) $(CFLAGS) $(ALL_CPPFLAGS) -DFS_IS_xia -c -o $@ $<
 
 # Make sure all installation directories (e.g. $(bindir))
 # actually exist by making them if necessary.
@@ -223,10 +180,6 @@ dep depend .depend: version.h
 ifdef USE_ext2
 	$(CPP) -M -DFS_IS_ext2 $(ALL_CPPFLAGS) $(srcdir)/e2dump.c \
 		| sed "s/^\([a-z0-9]*\).o/\1.ext2.o/" >> .depend
-endif
-ifdef USE_xia
-	$(CPP) -M -DFS_IS_xia $(ALL_CPPFLAGS) $(srcdir)/xdump.c \
-		| sed "s/^\([a-z0-9]*\).o/\1.xia.o/" >> .depend
 endif
 
 include .depend

@@ -32,7 +32,7 @@ configure-stamp:
 	autoconf
 
 	CFLAGS="$(CFLAGS)" ./configure \
-		--prefix=/usr --mandir=\$${prefix}/share/man --disable-minix
+		--prefix=/usr --mandir=\$${prefix}/share/man
 
 	touch $@
 

@@ -1,3 +1,11 @@
+defrag (0.77) lucid; urgency=low
+
+  * Dropped support for ext, xia, and minix filesystems from the build
+    system, which have not actually compiled in a long time.
+  * Fixed autoconf system to link to glib-2.0
+
+ -- Phillip Susi <psusi@cfl.rr.com>  Thu, 10 Jun 2010 21:30:46 -0400
+
 defrag (0.76) lucid; urgency=low
 
   * Added support for ext4 extents
