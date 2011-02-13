@@ -153,11 +153,6 @@ void read_tables (void)
 
     read_groups();
 
-    inode_average_map = malloc (INODES * sizeof(*inode_average_map));
-    if (!inode_average_map)
-	die ("Unable to allocate buffer for inode averages");
-    memset (inode_average_map, 0, (INODES * sizeof(*inode_average_map)));
-
     inode_priority_map = malloc (INODES * sizeof(*inode_priority_map));
     if (!inode_priority_map)
 	die ("Unable to allocate buffer for inode priorities");

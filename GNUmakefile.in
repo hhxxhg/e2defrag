@@ -53,7 +53,7 @@ DFLAGS = $(shell getconf LFS_CFLAGS 2>/dev/null || echo -D_FILE_OFFSET_BITS=64)
 ALL_CPPFLAGS = $(DFLAGS) $(CPPFLAGS) $(DEFS) -I. -I$(srcdir)
 
 PROGS = frag
-SCRIPTS = defrag
+SCRIPTS = defrag dump2inodes.py
 manpages = defrag frag
 mansymlinks =
 filesystems =

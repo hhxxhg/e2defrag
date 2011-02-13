@@ -68,14 +68,11 @@ char inode_buffer[1024];
 int current_inode = 0;
 char super_block_buffer[SUPERBLOCK_SIZE];
 unsigned char * inode_map = NULL;
-Block *inode_average_map = NULL;
 signed char *inode_priority_map = NULL;
 __u32 *inode_order_map = NULL;
 char * fixed_map = NULL;
 
 /* Local variables */
-static float sum_inode_zones;
-static int count_inode_blocks;
 static int used_inodes = 0;
 static FILE *priority_file = 0;
 
@@ -207,27 +204,6 @@ static void validate_relocation_maps(void)
    get written to disk.
 */
 
-static inline void update_inode_average (Block n)
-{
-  if( (current_inode / Super.s_inodes_per_group) !=
-      (n / Super.s_blocks_per_group) ||
-      sum_inode_zones == INFINITY )
-    {
-      /* if blocks have spilled outside the native block group
-	 during the last defrag then force the average
-	 to -1 to push the inode to the right in the optimisation
-	 order, otherwise idnoes will dance back and forth on
-	 susequent defrags since their positions will reverse if
-	 their non native blocks are allocated in earlier groups */
-      sum_inode_zones = INFINITY;
-      count_inode_blocks = 1;
-    }
-  else {
-    sum_inode_zones += n;
-    count_inode_blocks++;
-  }
-}
-
 static int walk_zone (Block * znr, enum walk_zone_mode mode)
 {       
         Block bn = *znr;
@@ -251,7 +227,6 @@ static int walk_zone (Block * znr, enum walk_zone_mode mode)
 #endif
 
 	if (mode == WZ_SCAN) {
-		update_inode_average(bn);
                 set_attr(bn,AT_DATA);
         }
         	
@@ -286,8 +261,6 @@ static int walk_zone_ind (Block * znr, enum walk_zone_mode mode)
         update_group_population(*znr,mode,current_inode);
 #endif
         set_attr(*znr,AT_DATA);
-	if (mode == WZ_SCAN)
-		update_inode_average(*znr);
 	if( mode == WZ_FIXED_BLOCKS )
 	  {
 		mark_fixed(*znr);
@@ -335,8 +308,6 @@ static int walk_zone_dind (Block * znr, enum walk_zone_mode mode)
         update_group_population(*znr,mode,current_inode);
 #endif
         set_attr(*znr,AT_DATA);
-	if (mode == WZ_SCAN)
-		update_inode_average(*znr);
 	if( mode == WZ_FIXED_BLOCKS )
 	  {
 		mark_fixed(*znr);
@@ -383,8 +354,6 @@ static int walk_zone_tind (Block * znr, enum walk_zone_mode mode)
         update_group_population(*znr,mode,current_inode);
 #endif
         set_attr(*znr,AT_DATA);
-	if (mode == WZ_SCAN)
-		update_inode_average(*znr);
 	if( mode == WZ_FIXED_BLOCKS )
 	  {
 		mark_fixed(*znr);
@@ -702,7 +671,6 @@ static void optimise_inode (unsigned int i, int scan)
 	if (!S_ISDIR (inode->i_mode) && !S_ISREG (inode->i_mode) &&     
 	    !S_ISLNK (inode->i_mode) && (i != bad_block_inode))
 	{
-		inode_average_map[i] = 0;
 		return;
 	}
 	
@@ -712,7 +680,6 @@ static void optimise_inode (unsigned int i, int scan)
          */
         if (S_ISLNK(inode->i_mode) && (inode->i_blocks==0))
         {
-                inode_average_map[i] = 0;
 		return;
         }
         
@@ -734,16 +701,7 @@ static void optimise_inode (unsigned int i, int scan)
 	}
 	if (scan)
 	{
-		sum_inode_zones = 0.0;
-		count_inode_blocks = 0;
-                
 		walk_inode(inode, WZ_SCAN);
-		if (count_inode_blocks)
-			inode_average_map[i] = sum_inode_zones != INFINITY ?
-				(Block) (sum_inode_zones / (float) count_inode_blocks) :
-				~0;
-		else
-			inode_average_map[i] = 0;
 	}
 	else
 	{
@@ -753,9 +711,7 @@ static void optimise_inode (unsigned int i, int scan)
 	if (verbose > 1 && !voyer_mode)
 	{
 		if (scan)
-    		        stat_line ("Scanning inode %d... %d block%s.", 
-			          i,count_inode_blocks,
-			          count_inode_blocks==1 ? "" : "s");
+    		        stat_line ("Scanning inode %d...", i);
 	}
 }
 
@@ -895,8 +851,6 @@ static void read_priority_file(void)
 static int compare_inodes (const void *a, const void *b)
 {
 	int aa = *((int const *) a), bb = *((int const *) b);
-	Block ave_a = inode_average_map[aa];
-	Block ave_b = inode_average_map[bb];
 	int pa = inode_priority_map[aa];
 	int pb = inode_priority_map[bb];
 
@@ -905,10 +859,6 @@ static int compare_inodes (const void *a, const void *b)
 		return -1;
 	if (pa < pb)
 		return 1;
-	if (ave_a < ave_b)
-		return -1;
-	if (ave_a == ave_b)
-		return 0;
 	return 1;
 }
 

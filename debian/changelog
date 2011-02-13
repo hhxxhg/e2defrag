@@ -1,3 +1,12 @@
+defrag (0.78) maverick; urgency=low
+
+  * Added dump2inodes.py script to generate an inode priority
+    list from the the ureadahead list.
+  * Removed inode average location sorting.  It used a lot of
+    memory and I don't think it helped any.
+
+ -- Phillip Susi <psusi@cfl.rr.com>  Sat, 12 Feb 2011 19:15:33 -0500
+
 defrag (0.77) lucid; urgency=low
 
   * Dropped support for ext, xia, and minix filesystems from the build
