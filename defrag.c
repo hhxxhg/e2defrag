@@ -859,7 +859,11 @@ static int compare_inodes (const void *a, const void *b)
 		return -1;
 	if (pa < pb)
 		return 1;
-	return 1;
+	if (aa > bb)
+		return 1;
+	if (aa < bb)
+		return -1;
+	return 0;
 }
 
 static void sort_inodes (void)

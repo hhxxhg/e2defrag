@@ -1,3 +1,9 @@
+defrag (0.79) UNRELEASED; urgency=low
+
+  * Fixed inode sort order so lower inodes move left
+
+ -- Phillip Susi <psusi@ubuntu.com>  Wed, 15 Feb 2012 14:33:21 -0500
+
 defrag (0.78) maverick; urgency=low
 
   * Added dump2inodes.py script to generate an inode priority
