@@ -1,4 +1,4 @@
-.TH DEFRAG 8 "Version 0.73pjm1   30 Apr 2001"
+.TH DEFRAG 8 "Version 0.76   17 Feb 2012"
 .SH NAME
 {e|e2|m|x}defrag - defragment file systems.
 .SH SYNOPSIS
@@ -20,6 +20,12 @@
 ] [
 .B -p 
 .I pool-size
+] [
+.B -F
+.I file-prio
+] [
+.B -D
+.I dir-prio
 ]
 .I /dev/name
 
@@ -151,6 +157,12 @@ number you choose will depend on how much physical and virtual memory
 you have available.  The default pool size is 8192 buffers (equivalent
 to 32MB of memory used for filesystems with the default 4kB block
 size of current mke2fs versions).
+.TP
+.BI -F " file-prio"
+Sets the default priority for regular files.
+.TP
+.BI -D " dir-prio"
+Sets the default priority for directories.
 .SH "SEE ALSO"
 .BR mkfs (8),
 .BR fsck (8),

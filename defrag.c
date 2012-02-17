@@ -75,6 +75,7 @@ char * fixed_map = NULL;
 /* Local variables */
 static int used_inodes = 0;
 static FILE *priority_file = 0;
+static char default_file_prio, default_dir_prio;
 
 /* Write back the current inode */
 void put_inode(void)
@@ -701,6 +702,9 @@ static void optimise_inode (unsigned int i, int scan)
 	}
 	if (scan)
 	{
+		if (S_ISDIR(inode->i_mode))
+			inode_priority_map[i] = default_dir_prio;
+		else inode_priority_map[i] = default_file_prio;
 		walk_inode(inode, WZ_SCAN);
 	}
 	else
@@ -915,7 +919,7 @@ int main (int argc, char ** argv)
 	if (argc && *argv)
 		program_name = *argv;
 	while ((c = getopt (argc, argv, 
-			    "nvVrsp:b:i:"
+			    "nvVrsp:b:i:F:D:"
 #ifndef NODEBUG
 			    "d"
 #endif
@@ -965,6 +969,8 @@ int main (int argc, char ** argv)
 		}
 #ifndef NODEBUG
 		case 'd': debug=1; break;
+		case 'F': default_file_prio = atoi (optarg); break;
+		case 'D': default_dir_prio = atoi (optarg); break;
 #endif
 		default: usage();
 		}

@@ -1,6 +1,8 @@
 defrag (0.79) UNRELEASED; urgency=low
 
   * Fixed inode sort order so lower inodes move left
+  * Add -F and -D switches to specify default file and directory
+    priorities
 
  -- Phillip Susi <psusi@ubuntu.com>  Wed, 15 Feb 2012 14:33:21 -0500
 
