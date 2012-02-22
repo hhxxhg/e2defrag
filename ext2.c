@@ -751,14 +751,15 @@ static ulong try_other_groups(ulong inode, unsigned native_group)
     if (debug)
       printf("try_other_groups, gr:%u,  free:%lu, next:%lu last:%lu\n",
 	     i,gp[i].free_blocks,gp[i].next_block_to_fill,gp[i].last_block);
-    if (gp[i].free_blocks==0)
+    if (abs(inode_priority_map[inode]) <= 50 && gp[i].free_blocks==0)
       continue;
     if (gp[i].next_block_to_fill > gp[i].last_block)
       continue;
     while (zone_is_fixed(gp[i].next_block_to_fill))
       if (++gp[i].next_block_to_fill > gp[i].last_block)
 	continue;
-    gp[i].free_blocks--;
+    if (gp[i].free_blocks)
+      gp[i].free_blocks--;
     gp[i].wants_away++;
     return gp[i].next_block_to_fill++;
   }
@@ -770,7 +771,7 @@ static ulong try_other_groups(ulong inode, unsigned native_group)
     if (debug)
       printf("try_other_groups, gr:%u,  free:%lu, next:%lu last:%lu\n",
 	     i,gp[i].free_blocks,gp[i].next_block_to_fill,gp[i].last_block);
-    if( native_group != -1 && gp[i].free_blocks==0 )
+    if( abs(inode_priority_map[inode]) <= 50 && gp[i].free_blocks==0 )
       continue;
     if (gp[i].next_block_to_fill > gp[i].last_block)
       continue;
@@ -798,8 +799,10 @@ ulong choose_block(ulong inode)
 {
   unsigned i_group = (inode-1) / Super.s_inodes_per_group;
 
-  if( inode_priority_map[inode] > 0 )
-    return try_other_groups( inode, 0 ); /* force to left most block group */
+  if (inode_priority_map[inode] > 50)
+    return try_other_groups (inode, 0); /* force to left most block group */
+  if (inode_priority_map[inode] < -50)
+    return try_other_groups (inode, groups); /* force to right most block group */
   if (gp[i_group].next_block_to_fill > gp[i_group].last_block)
     return try_other_groups(inode,i_group);
 

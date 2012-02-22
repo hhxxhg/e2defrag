@@ -3,6 +3,10 @@ defrag (0.79) UNRELEASED; urgency=low
   * Fixed inode sort order so lower inodes move left
   * Add -F and -D switches to specify default file and directory
     priorities
+  * Change block group forcing ( not first trying to allocate from
+    the inode's native group ) to take place at priority > 50 instead
+    of > 0, and added ability to force to the right for priorities
+    < -50.
 
  -- Phillip Susi <psusi@ubuntu.com>  Wed, 15 Feb 2012 14:33:21 -0500
 

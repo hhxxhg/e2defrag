@@ -132,11 +132,13 @@ data on your disk.  The
 .I inode-priority-file
 is a file giving a priority between -100 and 100 to each
 inode in the filesystem.  Higher priorities will be allocated nearer
-the beginning of the disk than lower (more negative) priorities.  Two
-inodes of equal priority will be allocated in the same sequence they
-had originally on the filesystem, to minimise file movement.  All
-inodes have a default priority of zero if they are ommitted from the
-file or if no
+the beginning of the disk than lower (more negative) priorities.  Inodes
+of an equal priority are sorted in order of their inode number.  Normally
+blocks for an inode are first allocated from the inode's native block group. 
+A priority > 50 will ignore the native group and move the file as far to
+the left as possible.  A priority < -50 will ignore the native group and
+move the file as far to the right as possible.  All inodes have a default
+priority of zero if they are ommitted from the file or if no
 .B -i
 option is given.
 
