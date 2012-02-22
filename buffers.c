@@ -59,6 +59,7 @@ int count_buffer_migrates = 0, count_buffer_forces = 0;
 int count_buffer_read_aheads = 0;
 int last_block = -1;
 int queue_count;
+int queue_block_count;
 char queue_direction;
 #define QUEUE_MAX 1024
 struct iovec queue[QUEUE_MAX];
@@ -384,19 +385,20 @@ void queue_flush()
 
   if (queue_direction) {
     read = writev (IN, queue, queue_count);
-    if (read != queue_count * block_size) {
+    if (read != queue_block_count * block_size) {
       sprintf (tmps, "writev failed: %s\n", strerror (errno));
       io_error (tmps);
     }
   }
   else {
     read = readv (IN, queue, queue_count);
-    if (read != queue_count * block_size) {
+    if (read != queue_block_count * block_size) {
       sprintf (tmps, "readv failed: %s\n", strerror (errno));
       io_error (tmps);
     }
   }
   queue_count = 0;
+  queue_block_count = 0;
   last_block = -1;
 }
 
@@ -424,6 +426,14 @@ void queue_read_current_block (Block nnr, char * addr)
 	}
   }
   last_block = nnr;
+  queue_block_count++;
+  if (queue_count &&
+      queue[queue_count-1].iov_base + queue[queue_count-1].iov_len == addr)
+    {
+      /* append to previous entry */
+      queue[queue_count-1].iov_len += block_size;
+      return;
+    }
   queue[queue_count].iov_base = addr;
   queue[queue_count].iov_len = block_size;
   if (++queue_count == QUEUE_MAX)
@@ -455,6 +465,14 @@ void queue_write_current_block (Block nnr, char * addr)
 	}
   }
   last_block = nnr;
+  queue_block_count++;
+  if (queue_count &&
+      queue[queue_count-1].iov_base + queue[queue_count-1].iov_len == addr)
+    {
+      /* append to previous entry */
+      queue[queue_count-1].iov_len += block_size;
+      return;
+    }
   queue[queue_count].iov_base = addr;
   queue[queue_count].iov_len = block_size;
   if (++queue_count == QUEUE_MAX)
