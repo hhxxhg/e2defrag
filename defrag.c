@@ -1037,7 +1037,8 @@ int main (int argc, char ** argv)
 	optimise_used_inodes ();
 
 #ifndef NODEBUG
-	validate_relocation_maps ();
+	if (debug)
+		validate_relocation_maps ();
 #endif
         clear_attr(AT_SELECTED);
 	remap_disk_blocks ();
