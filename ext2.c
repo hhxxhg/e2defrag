@@ -430,6 +430,7 @@ void init_zone_maps (void)
   unsigned n;
   ulong size;
   loff_t pos;
+  Block start = 0, count = 0;
 
   assert( (Super.s_blocks_per_group & 7) == 0);
   /* Loose proof: checked by read_groups (@E2).
@@ -463,9 +464,21 @@ void init_zone_maps (void)
     {
       if (bm_zone_in_use(i))
 	{
-	  map_forward_set (i, i);
+	  if (start == 0)
+	    {
+	      start = i;
+	      count = 0;
+	    }
+	  else count++;
 	}
+      else {
+	if (start)
+	  map_identity_add (start, count);
+	start = 0;
+      }
     }
+  if (start)
+    map_identity_add (start, count);
   count_free_blocks();
   mark_group_zones();
 }

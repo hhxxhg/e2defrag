@@ -289,6 +289,17 @@ void map_forward_set (Block old, Block new)
 	return;
 }
 
+void map_identity_add (Block start, Block count)
+{
+	struct map_extent *e;
+	e = malloc (sizeof(struct map_extent));
+	e->old = start;
+	e->new = start;
+	e->count = count;
+	g_tree_insert (forward_map, e, e);
+	g_tree_insert (reverse_map, e, e);
+}
+
 static gboolean dump_extent (struct map_extent *e, void *unused1, void *unused2)
 {
 	printf ("old = %d, new = %d, count = %d\n", e->old, e->new, e->count);
