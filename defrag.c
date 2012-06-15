@@ -724,7 +724,6 @@ static void optimise_inode (unsigned int i, int scan)
 static void scan_used_inodes(void)
 {
 	unsigned i;
-        int last_upd = 0;
         
 	if (debug)
 		printf ("DEBUG: scan_used_inodes()\n");
@@ -734,9 +733,8 @@ static void scan_used_inodes(void)
 	  	if (inode_in_use(i) && (i != bad_block_inode))
 			optimise_inode(i, 1);
                                 /* Update at least 50 times during scan */
-                if (time(NULL)-last_upd!=0 || (i%(INODES/50+1)==0)) {
-                        update_display();        
-                        last_upd = time(NULL);
+                if (i%(INODES/50+1)==0) {
+                        update_display();
                 }        
         }
         update_display();
@@ -752,7 +750,6 @@ static void scan_used_inodes(void)
 static void optimise_used_inodes(void)
 {
 	int i;
-        int last_upd = 0;
         
 	if (debug)
 		printf ("DEBUG: optimise_used_inodes()\n");
@@ -762,9 +759,8 @@ static void optimise_used_inodes(void)
 		optimise_inode(inode_order_map[i], 0);
                                 /* Update at least 50 times during scan */
 				/* +1 is to avoid division by 0 */
-                if (time(NULL)-last_upd!=0 || (i%(used_inodes/50+1)==0)) {
+                if (i%(used_inodes/50+1)==0) {
                        update_display();        
-                       last_upd = time(NULL);
                 }       
 
         }                
