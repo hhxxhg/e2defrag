@@ -14,12 +14,11 @@ AC_PROG_LN_S
 
 dnl Checks for libraries.
 AC_CHECK_LIB(ncurses, initscr)
-AC_CHECK_LIB(glib-2.0, g_tree_new_full)
 
 dnl Checks for header files.
 AC_HEADER_DIRENT
 AC_HEADER_STDC
-AC_CHECK_HEADERS(errno.h fcntl.h limits.h strings.h sys/ioctl.h sys/types.h unistd.h glib.h)
+AC_CHECK_HEADERS(errno.h fcntl.h limits.h strings.h sys/ioctl.h sys/types.h unistd.h)
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -91,7 +90,7 @@ AC_SUBST(USE_ext2)
 
 
 if test x"$GCC" = x"yes"; then
-  CFLAGS="-I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -pipe -Wall -W -Wunused -Wshadow -Wpointer-arith -Wbad-function-cast -Wcast-qual -Wcast-align -Wwrite-strings -Wno-sign-compare -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wmissing-noreturn -Wnested-externs $CFLAGS"
+  CFLAGS="-pipe -Wall -W -Wunused -Wshadow -Wpointer-arith -Wbad-function-cast -Wcast-qual -Wcast-align -Wwrite-strings -Wno-sign-compare -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wmissing-noreturn -Wnested-externs $CFLAGS"
 fi
 
 # Remember to change GNUmakefile.in's distclean target if you change this list.

@@ -64,7 +64,7 @@ mansymlinks += e2defrag
 filesystems += ext2
 endif
 
-OBJS = defrag.o buffers.o display.o misc.o llseek.o map.o
+OBJS = defrag.o buffers.o display.o misc.o llseek.o map.o rbtree.o
 
 all:	$(PROGS)
 

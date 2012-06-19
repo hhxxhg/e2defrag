@@ -10,10 +10,19 @@
 
 #ifndef MAP_H
 
+#include "rbtree.h"
+
 void map_init(void);
 Block map_forward_get (Block b);
 Block map_reverse_get (Block b);
 void map_forward_set (Block old, Block new);
 void map_identity_add (Block start, Block count);
+
+struct map_extent {
+	Block old, new;
+	int count;
+	struct rb_node rb_forward_node;
+	struct rb_node rb_reverse_node;
+};
 
 #endif
