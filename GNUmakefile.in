@@ -54,7 +54,7 @@ ALL_CPPFLAGS = $(DFLAGS) $(CPPFLAGS) $(DEFS) -I. -I$(srcdir)
 
 PROGS = frag
 SCRIPTS = defrag dump2inodes.py
-manpages = defrag frag
+manpages = e2defrag frag
 mansymlinks =
 filesystems =
 

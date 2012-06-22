@@ -1,13 +1,14 @@
-Source: defrag
+Source: e2defrag
 Section: admin
 Priority: extra
 Maintainer: Phillip Susi <psusi@ubuntu.com>
-Standards-Version: 3.6.2.0
-Build-Depends: debhelper (>= 4.0.0), libncurses-dev, bzip2, e2fslibs-dev, autoconf2.13, automake1.4
+Build-Depends: debhelper (>= 8.0.0), autotools-dev, libncurses-dev, bzip2, e2fslibs-dev
+Standards-Version: 3.9.2
+Homepage: <http://launchpad.net/e2defrag>
 
-Package: defrag
+Package: e2defrag
 Architecture: any
-Depends: ${shlibs:Depends}, file
+Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: ext[234] filesystem defragmenter
  As a file system is used, data tends to become more and more
  scattered across the disk, degrading performance.  A disk
@@ -21,3 +22,4 @@ Description: ext[234] filesystem defragmenter
  back up your data first because if anything goes wrong ( power
  failure, system crash, bug in the program ) your filesystem
  is likely to be unrecoverable.
+

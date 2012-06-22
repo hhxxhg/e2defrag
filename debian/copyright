@@ -1,40 +1,35 @@
-This package was debianized by Christoph Lameter <clameter@waterf.org> on
-Tue, 5 Nov 1996 20:09:21 -0800. It was then taken over by Adam Heath
-<adam.heath@usa.net> on Wed, 31 Dec 1997 00:35:12 -0500, and again by
-Timshel Knoll <timshel@debian.org> on Thu, 24 Aug 2000 00:13:42 +1000,
-and again by Goswin von Brederlow <brederlo@informatik.uni-tuebingen.de>
-on Thu, 27 May 2004 21:39:05 +0200.
+Format: http://dep.debian.net/deps/dep5
+Upstream-Name: e2defrag
+Source: http://launchpad.net/e2defrag
 
-It was downloaded from ftp://sunsite.unc.edu:/pub/Linux/Incoming,
-	but I can no longer find it there, so it is still available
-	from: http://www.go.dlr.de/linux/src/defrag-0.73.tar.gz
+Files: *
+Copyright: 1992, 1993, 1994, 1997, 1998 Stephen C. Tweedie <sct@dsc.ed.ac.uk>
+           1992 Linus Torvalds <torvalds@kruuna.helsinki.fi>
+	   1994 Alexey Vovenko
+	   1997 Ulrich Habel <espero@b31.hadiko.de>
+	   2001 Peter Moulder <pjm@bofh.asn.au>
+	   2008-2012 Phillip Susi <psusi@ubuntu.com>
+License: GPL
 
-Upstream Authors: Stephen Tweedie <sct@dcs.ed.ac.uk>, Alexei Vovenko
-		  and Anthony Tong <antoine@eci.com>
+Files: debian/*
+Copyright: 2012 Phillip Susi <psusi@ubuntu.com>
+License: GPL
 
-Copyright:
+License: GPL
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation.
+ .
+ This package is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ .
+ You should have received a copy of the GNU General Public License
+ along with this program. If not, see <http://www.gnu.org/licenses/>.
+ .
+ On Debian systems, the complete text of the GNU General
+ Public License can be found in "/usr/share/common-licenses/GPL".
 
-    Copyright (C) 1992, 1993, 1994, 1997, 1998 Stephen C. Tweedie
-					       <sct@dcs.ed.ac.uk>
-    Parts Copyright (C) 1992 Remy Card <card@masi.ibpr.fr>
-    Parts Copyright (C) 1992 Linus Torvalds <torvalds@kruuna.helsinki.fi>
-    Parts Copyright (C) 1994 Alexey Vovenko
-    Parts Copyright (C) 1997 Ulrich Habel <espero@b31.hadiko.de>
-    Parts Copyright (C) 2001 Peter J. Moulder <pjm@bofh.asn.au>
-
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, write to the Free Software Foundation,
-    Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
-
-On Debian GNU/Linux systems, the complete text of the GNU General
-Public License can be found in `/usr/share/common-licenses/GPL'.
-
- -- Goswin von Brederlow <brederlo@informatik.uni-tuebingen.de>  Fri, 20 Jan 2006 16:06:13 +0100
+# Please also look if there are files or directories which have a
+# different copyright/license attached and list them here.

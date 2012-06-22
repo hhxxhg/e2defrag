@@ -1,4 +1,4 @@
-defrag (0.79) quantal; urgency=low
+e2defrag (0.79) unstable; urgency=low
 
   * Fixed inode sort order so lower inodes move left
   * Add -F and -D switches to specify default file and directory
@@ -13,6 +13,7 @@ defrag (0.79) quantal; urgency=low
   * Removed -b bad-block-inode option
   * Cleaned up the man page
   * Auto detect buffer pool size based on free memory
+  * Repackaged to update to source format 3.0 (native)
 
  -- Phillip Susi <psusi@ubuntu.com>  Thu, 21 Jun 2012 13:56:09 -0400
 
