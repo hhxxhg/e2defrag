@@ -1,7 +1,23 @@
-Public defrag release 0.73pjm1
+Public e2defrag release 0.79
 
 NEWS
 ====
+
+New in 0.79:
+
+After years of abandonment and being removed from the Debian archive,
+the package has been rescued by a new maintainer and updated with
+many bug fixes and new features.  The most notable include:
+
+ - Full support for ext4, including extents
+ - Much optimization making e2defrag not only usable but fast
+   on moderm hard disks ( many GB and even TB )
+ - An improved progress report that lists the amount of data moved
+   rather than the absolute position of the cursor, and shows
+   the percentage completed of total blocks that need moved
+ - Automatic sizing of the buffer pool based on how much free
+   memory is detected ( it targets half of free memory )
+
 
 New in 0.73pjm1:
 

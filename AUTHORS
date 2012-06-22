@@ -14,3 +14,5 @@ Theodore Ts'o: llseek.c, llseek parts of configure.in.
 
 Peter Moulder: configure.in (other than llseek stuff).  tests/*.
 Changes specific to ext2 features sparse_super, compression.
+
+The current maintainer is Phillip Susi <psusi@ubuntu.com>
