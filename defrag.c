@@ -55,7 +55,7 @@ int badblocks = 0;
 int readonly = 0;
 int changed = 0;
 int blocks_until_sync = 0;
-Block bad_block_inode = 0, user_bad_inode = 0, journal_inode;
+Block bad_block_inode = 0, journal_inode;
 
 #ifndef FS_IS_ext2
 Block next_block_to_fill = 0;
@@ -914,18 +914,13 @@ int main (int argc, char ** argv)
 	if (argc && *argv)
 		program_name = *argv;
 	while ((c = getopt (argc, argv, 
-			    "nvVrsp:b:i:F:D:"
+			    "nvVrsp:i:F:D:"
 #ifndef NODEBUG
 			    "d"
 #endif
 			    )) != EOF)
 		switch (c)
 		{
-		case 'b':
-		{
-			user_bad_inode = strtoul(optarg,0,10);
-			break;
-		}		
 		case 'i':
 		{
 			if(priority_file)
@@ -1005,16 +1000,6 @@ int main (int argc, char ** argv)
 	init_buffer_tables ();
 	init_zone_maps ();
 	init_inode_bitmap ();
-	if (user_bad_inode)
-	{
-		if (user_bad_inode > INODES)
-			die ("Invalid bad block inode");
-		if (user_bad_inode == ROOT_INO)
-			die ("Root inode cannot be bad block inode");
-		if (!inode_in_use(user_bad_inode))
-			die ("Requested bad block inode is not in use");
-		bad_block_inode = user_bad_inode;
-	}
 	read_fixed_zones ();
 
         show_super_stats();

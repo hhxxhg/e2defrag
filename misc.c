@@ -42,7 +42,7 @@ void usage()
 #ifndef NODEBUG
 		 "d"
 #endif
-		 "rsv] [-i inode-list] [-b bad-inode] [-p pool-size] "
+		 "nrsv] [-i inode-list] [-p pool-size] [-F file-prio] [-D dir-prio]"
 		 "/dev/name\n", 
 		 program_name);
 	fprintf (stderr, "  -V : print full version information\n");
