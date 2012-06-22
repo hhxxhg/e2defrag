@@ -595,8 +595,7 @@ static void walk_inode (struct d_inode *inode, enum walk_zone_mode mode)
 	    if (eh->eh_max != 4)
 	      die ("Bad eh_max");
 	    if ( !voyer_mode &&
-		 (verbose > 1 ||
-		  (verbose == 1 && eh->eh_depth)) )
+		 verbose > 1)
 	      stat_line ("Inode %u has depth %u", current_inode, eh->eh_depth);
 	    blocks = ((long long)inode->osd2.linux2.l_i_blocks_hi) << 16;
 	    blocks |= inode->i_blocks;
