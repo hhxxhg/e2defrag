@@ -1,4 +1,4 @@
-defrag (0.79) UNRELEASED; urgency=low
+defrag (0.79) quantal; urgency=low
 
   * Fixed inode sort order so lower inodes move left
   * Add -F and -D switches to specify default file and directory
@@ -7,8 +7,14 @@ defrag (0.79) UNRELEASED; urgency=low
     the inode's native group ) to take place at priority > 50 instead
     of > 0, and added ability to force to the right for priorities
     < -50.
+  * Various optimizations
+  * Removed dependency on glib
+  * Improved the progress indicator to show percent completion
+  * Removed -b bad-block-inode option
+  * Cleaned up the man page
+  * Auto detect buffer pool size based on free memory
 
- -- Phillip Susi <psusi@ubuntu.com>  Wed, 15 Feb 2012 14:33:21 -0500
+ -- Phillip Susi <psusi@ubuntu.com>  Thu, 21 Jun 2012 13:56:09 -0400
 
 defrag (0.78) maverick; urgency=low
 

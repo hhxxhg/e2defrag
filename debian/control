@@ -1,17 +1,14 @@
 Source: defrag
 Section: admin
 Priority: extra
-Maintainer: Phillip Susi <psusi@cfl.rr.com>
+Maintainer: Phillip Susi <psusi@ubuntu.com>
 Standards-Version: 3.6.2.0
-Build-Depends: debhelper (>= 4.0.0), libncurses-dev, bzip2, e2fslibs-dev, autoconf2.13, automake1.4, libglib2.0-dev
+Build-Depends: debhelper (>= 4.0.0), libncurses-dev, bzip2, e2fslibs-dev, autoconf2.13, automake1.4
 
 Package: defrag
 Architecture: any
 Depends: ${shlibs:Depends}, file
 Description: ext[234] filesystem defragmenter
- *HIGHLY EXPERIMENTAL* do not use on a filesystem that you care
- about as it likely will destroy it.
- .
  As a file system is used, data tends to become more and more
  scattered across the disk, degrading performance.  A disk
  defragmenter simply re-organises the data on the disk, so that
@@ -19,3 +16,8 @@ Description: ext[234] filesystem defragmenter
  and all the free space on the disk is collected together in a
  single region. This generally means that reading a whole file
  is faster, and disk accesses in general are more efficient.
+ .
+ To use, the filesystem must not be mounted, and you need to
+ back up your data first because if anything goes wrong ( power
+ failure, system crash, bug in the program ) your filesystem
+ is likely to be unrecoverable.
