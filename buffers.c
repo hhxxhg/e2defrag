@@ -565,7 +565,7 @@ void write_buffer_data_at (Buffer *b, Block dest)
 	if (b->btype != FORCE) {
 		assert (b->btype == OUTPUT);
 		count_buffer_writes++;
-	}
+	} else count_buffer_reads--; /* will count as a read again later */
 }
 
 void write_buffer_data (Buffer *b)
