@@ -46,7 +46,7 @@
 */
 
 static char tmps[128];
-int pool_size = 8192;
+int pool_size;
 Buffer *pool;
 Buffer *first_free_buffer;
 static Buffer **select_set;
@@ -95,6 +95,26 @@ void init_buffer_tables()
 		printf ("DEBUG: init_buffer_tables()\n");
 	
 	memset( hash, 0, HASH_SIZE * sizeof(*hash));
+	if (pool_size == 0)
+	{
+		/* auto detect pool size: use half of free mem */
+		FILE *info;
+		int memfree, membuffers, memcache;
+
+		info = fopen ("/proc/meminfo", "r");
+		if (!info)
+			die ("Unable to open /proc/meminfo.");
+		i = fscanf (info, "MemTotal: %*d kB MemFree: %d kB Buffers: %d kB Cached: %d kB",
+			    &memfree, &membuffers, &memcache);
+		fclose (info);
+		if (i != 3)
+			die ("Error parsing /proc/meminfo.");
+		memfree += membuffers;
+		memfree += memcache;
+		pool_size = memfree / (block_size / 512);
+		if (verbose)
+			stat_line ("Auto detected pool size of %d buffers", pool_size);
+	}
 	pool = (Buffer *) malloc (pool_size * sizeof(Buffer));
 	if (!pool)
 		die ("Unable to allocate buffer pool.");
