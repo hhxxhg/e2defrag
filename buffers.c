@@ -783,6 +783,7 @@ void remap_disk_blocks (void)
 	Block source, dest2;
 	Buffer **p;
 	struct map_extent *e;
+	Block blocks_to_relocate = 0;
 
 	dest_cursor = first_zone;
 	assert( (block_size & 127) == 0);
@@ -790,8 +791,18 @@ void remap_disk_blocks (void)
 
 	if (debug)
 		printf ("DEBUG: remap_disk_blocks()\n");
+	/* count blocks to relocate */
+	e = map_reverse_first ();
+	while (e) {
+		if (e->old != e->new)
+			blocks_to_relocate += (e->count + 1);
+		e = map_reverse_next (e);
+	}
 	if (verbose)
-		stat_line ("Relocating disk blocks - this could take a while.");
+		stat_line ("Relocating %lu MB - this could take a while.",
+			   (((unsigned long) blocks_to_relocate >> 10)
+			    * (block_size >> 7))
+			   >> (20 - 10 - 7));
        	assert (fcntl (IN, F_SETFL, O_DIRECT)==0);
 	/* Walk through each disk block sequentially, rescuing 
 	   previous contents and reading the new contents into the 
@@ -831,10 +842,11 @@ void remap_disk_blocks (void)
 				dest_cursor = e->new;
 			if (verbose)
 			{
-				stat_line( "Relocating : %lu MB...",
-					   (((unsigned long) dest_cursor >> 10)
+				stat_line( "Relocated : %lu MB (%u%%)",
+					   (((unsigned long) count_buffer_writes >> 10)
 					    * (block_size >> 7))
-					   >> (20 - 10 - 7));
+					   >> (20 - 10 - 7),
+					   (count_buffer_writes * 100) / blocks_to_relocate);
 				/* The funny shifting order is just to avoid overflow. */
 			}
 		}
