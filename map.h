@@ -25,4 +25,9 @@ struct map_extent {
 	struct rb_node rb_reverse_node;
 };
 
+struct map_extent *map_reverse_first ();
+struct map_extent *map_reverse_next (struct map_extent *e);
+struct map_extent *map_reverse_get_extent (Block b);
+struct map_extent *map_reverse_get_extent_next(Block b);
+
 #endif

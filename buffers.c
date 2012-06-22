@@ -63,6 +63,7 @@ int queue_block_count;
 char queue_direction;
 #define QUEUE_MAX 1024
 struct iovec queue[QUEUE_MAX];
+Block dest_cursor;
 
 /* We will hash buffered blocks on the least significant bits of the
    block's dest_zone */
@@ -186,10 +187,6 @@ static void free_buffer (Buffer *b)
 			(unsigned long) b->dest_zone);
 	assert (b->in_use);
 	assert (first_free_buffer ? free_buffers : !free_buffers);
-	/* Assert : throwing away a buffer's data is illegal unless 
-	   the zone is on disk somewhere. */ 
-	if (b->btype != FORCE)
-		assert (map_reverse_get(b->dest_zone));
 	b->in_use = 0;
 
 	/* Unlink this buffer from the hash table */
@@ -551,7 +548,6 @@ void read_buffer_data (Buffer *b)
 	   will be no need to write it back at any time. */
 	if (!readonly)
 		queue_read_current_block (source, b->datap);
-	map_forward_set (source, 0);
 	b->full = 1;
 	count_buffer_reads++;
 	return;
@@ -568,9 +564,6 @@ void write_buffer_data_at (Buffer *b, Block dest)
 		queue_write_current_block (dest, b->datap);
 	if (b->btype != FORCE) {
 		assert (b->btype == OUTPUT);
-		assert (!map_reverse_get(b->dest_zone));
-		assert (!map_forward_get(dest));
-		map_forward_set (dest, b->dest_zone);
 		count_buffer_writes++;
 	}
 }
@@ -663,12 +656,10 @@ static int empty_buffer_p (const Buffer *b)
 	return (!b->full);
 }
 
-#if 0 /* unused */
 static int rescue_buffer_p (const Buffer *b)
 {
 	return (b->btype == RESCUE);
 }
-#endif
 
 static int true (const Buffer *b)
 {
@@ -730,7 +721,7 @@ static void get_some_buffer_space(void)
 	{
 		if (buffer(i)->in_use &&
 		    buffer(i)->btype == RESCUE &&
-		    map_forward_get(buffer(i)->dest_zone) == 0)
+		    map_forward_get(buffer(i)->dest_zone) < dest_cursor)
 		{
 			set_buffer_type(buffer(i), OUTPUT);
 			count++;
@@ -765,8 +756,6 @@ static void get_some_buffer_space(void)
 		while (map_forward_get (dest))
 			dest--;
 		assert (select_set[i]->in_use & select_set[i]->full);
-		assert (!map_reverse_get(select_set[i]->dest_zone));
-		assert (!map_forward_get(dest));
 		if (debug)
 			printf ("Forcing buffer from %d to %d\n", select_set[i]->dest_zone, dest);
 		/* Unlink buffer from the hash table */
@@ -791,9 +780,11 @@ static void get_some_buffer_space(void)
 
 void remap_disk_blocks (void)
 {
-	Block source, dest = first_zone, dest2;
+	Block source, dest2;
 	Buffer **p;
+	struct map_extent *e;
 
+	dest_cursor = first_zone;
 	assert( (block_size & 127) == 0);
 	/* Relevance: the `block_size >> 7' below. */
 
@@ -805,39 +796,57 @@ void remap_disk_blocks (void)
 	/* Walk through each disk block sequentially, rescuing 
 	   previous contents and reading the new contents into the 
 	   output buffer. */
+	e = map_reverse_first ();
+	dest_cursor = e->new;
 	do
 	{
-		if (verbose && !(dest & 1023))
+		/* move to next extent if the dest cursor has moved
+		   past the end of this one, or if this extent does
+		   not move ( src == dest ) */
+		while (dest_cursor > e->new + e->count || e->new == e->old)
 		{
-			stat_line( "Relocating : %lu MB...",
-				   (((unsigned long) dest >> 10)
-				    * (block_size >> 7))
-				   >> (20 - 10 - 7));
-			/* The funny shifting order is just to avoid overflow. */
+			e = map_reverse_next (e);
+			if (!e)
+				goto done;
+			dest_cursor = e->new;
 		}
-
 		/* Don't try to save stuff to disk until we are
 		   running out of free buffers. */
 		if (free_buffers < 4)
 		{
 			get_some_buffer_space ();
+			/* forces may have changed the map, invalidating the
+			   current extent.  Look up new one */
+			e = map_reverse_get_extent_next (dest_cursor);
+			if (!e)
+				goto done;
+			while (e->new == e->old)
+			{
+				e = map_reverse_next (e);
+				if (!e)
+					goto done;
+			}
+			/* move to new extent */
+			if (dest_cursor < e->new)
+				dest_cursor = e->new;
+			if (verbose)
+			{
+				stat_line( "Relocating : %lu MB...",
+					   (((unsigned long) dest_cursor >> 10)
+					    * (block_size >> 7))
+					   >> (20 - 10 - 7));
+				/* The funny shifting order is just to avoid overflow. */
+			}
 		}
 		assert (free_buffers >= 4);
 		
 		/* Use the reverse relocation map to obtain the block 
 		   which should go in this space */
-		source = map_reverse_get (dest);
-		/* Zero means this block cannot be found on disk.
-		   Either it should remain empty (it may  be a bad
-		   block), or it has already been read into the rescue
-		   pool.  If source==dest, the block is already in
-		   place. */
-		if (source == dest)
-			continue;
+		source = dest_cursor - e->new + e->old;
 		/* We may have already read the source block into the 
 		   rescue pool; look for the block (indexed by dest) 
 		   in the hash table */
-		p = hash_lookup (dest);
+		p = hash_lookup (dest_cursor);
 		if (p)
 		{
 			/* Yes, we already have the block so make it 
@@ -855,7 +864,13 @@ void remap_disk_blocks (void)
 			   can be skipped. */
 			if (!source)
 				continue;
-			allocate_buffer (dest, OUTPUT);
+			/* if the source is to the left of the cursor,
+			   and it had an incoming block, we already
+			   rescued it and must have migrated, so don't
+			   transfer it a second time */
+			if (source < dest_cursor && map_reverse_get (source))
+				continue;
+			allocate_buffer (dest_cursor, OUTPUT);
 		}
 		
 		/* Rescue the block about to be overwritten.  All 
@@ -865,10 +880,10 @@ void remap_disk_blocks (void)
 		   the final destination of the block currently 
 		   residing in the destination zone by looking up the 
 		   forward relocation map. */
-		dest2 = map_forward_get (dest);
-		/* Zero means that the dest block may be safely 
-		   overwritten. */
-		if (!dest2)
+		dest2 = map_forward_get (dest_cursor);
+		/* If dest_cursor is already past this block's dest,
+		   then we have already read it so it is safe to overwrite */
+		if (dest2 < dest_cursor)
 			continue;
 		/* Check to see if we have already read this block */
 		p = hash_lookup (dest2);
@@ -879,7 +894,8 @@ void remap_disk_blocks (void)
 		}
 		/* Read the block into the rescue pool */
 		allocate_buffer (dest2, RESCUE);
-	} while (++dest < zones);
+	} while (++dest_cursor < zones);
+done:
 	/* We have got to the end, so flush any remaining buffers. */
 	flush_output_pool ();
 	assert (!count_output_buffers);

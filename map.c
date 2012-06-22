@@ -149,6 +149,56 @@ Block map_reverse_get (Block b)
 	else return 0;
 }
 
+struct map_extent *map_reverse_get_extent (Block b)
+{
+	return rb_search_map_reverse (b);
+}
+
+struct map_extent *map_reverse_get_extent_next(Block b)
+{
+	struct map_extent *extent;
+	struct rb_node *n = reverse_tree_root.rb_node;
+
+	while (n)
+	{
+		extent = rb_entry(n, struct map_extent, rb_reverse_node);
+
+		if (b < extent->new)
+		{
+			if (n->rb_left == NULL)
+				return rb_entry (rb_next(n), struct map_extent, rb_reverse_node);
+			n = n->rb_left;
+		}
+		else if (b <= (extent->new + extent->count) )
+			return extent;
+		else {
+			if (n->rb_right == NULL)
+				return rb_entry (rb_next(n), struct map_extent, rb_reverse_node);
+			n = n->rb_right;
+		}
+	}
+	return NULL;
+}
+
+
+
+struct map_extent *map_reverse_first ()
+{
+	struct rb_node *node = rb_first (&reverse_tree_root);
+	if (node == NULL)
+		return NULL;
+	return rb_entry (node, struct map_extent, rb_reverse_node);
+}
+
+struct map_extent *map_reverse_next (struct map_extent *e)
+{
+	struct rb_node *node = rb_next (&e->rb_reverse_node);
+	if (node == NULL)
+		return NULL;
+	return rb_entry (node, struct map_extent, rb_reverse_node);
+}
+
+
 /* set new destination given old original location */
 
 void map_forward_set (Block old, Block new)
@@ -315,10 +365,10 @@ void map_identity_add (Block start, Block count)
 
 void dump_extents (void)
 {
-	struct rb_node *node = rb_first (&forward_tree_root);
+	struct rb_node *node = rb_first (&reverse_tree_root);
 	while (node)
 	{
-		struct map_extent *e = container_of (node, struct map_extent, rb_forward_node);
+		struct map_extent *e = container_of (node, struct map_extent, rb_reverse_node);
 		printf ("old = %d, new = %d, count = %d\n", e->old, e->new, e->count);
 		node = rb_next (node);
 	}
