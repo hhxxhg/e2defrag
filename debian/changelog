@@ -1,3 +1,12 @@
+e2defrag (0.80) unstable; urgency=low
+
+  * Fixed missing man page
+  * Fixed lintian warnings about homepage clutter and boilerplate
+  * Drop defrag wrapper script
+  * Initial debian upload (Closes: #678598)
+
+ -- Phillip Susi <psusi@ubuntu.com>  Fri, 22 Jun 2012 22:50:56 -0400
+
 e2defrag (0.79) unstable; urgency=low
 
   * Fixed inode sort order so lower inodes move left
