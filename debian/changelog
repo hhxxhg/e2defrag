@@ -4,6 +4,7 @@ e2defrag (0.80) unstable; urgency=low
   * Fixed lintian warnings about homepage clutter and boilerplate
   * Drop defrag wrapper script
   * Initial debian upload (Closes: #678598)
+  * Added man page for dump2inodes.py
 
  -- Phillip Susi <psusi@ubuntu.com>  Fri, 22 Jun 2012 22:50:56 -0400
 

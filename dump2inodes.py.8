@@ -1,0 +1,23 @@
+.TH DUMP2INODES.PY 8 "Version 0.79   20 Jun 2012"
+.SH NAME
+dump2inodes.py \- generate an inode priority file from ureadahead
+.SH SYNOPSIS
+.B dump2inodes.py > 
+.I inodes.lst
+.SH DESCRIPTION
+.I dump2inodes.py
+will ask
+.I ureadahead
+for the list of files that it reads during boot, and generate an inode
+priority listing that can be passed to
+.I e2defrag
+to pack those files at the start of the disk where they can be read faster.
+After running
+.I e2defrag
+you will need to delete
+.I /var/lib/ureadahead/pack
+and reboot in order to force ureadahead to reprofile and order its list
+optimally with the new file layout.
+.SH "SEE ALSO"
+.BR e2defrag (8),
+.BR ureadahead (8)
