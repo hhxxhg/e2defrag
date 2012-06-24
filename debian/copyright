@@ -1,4 +1,4 @@
-Format: http://dep.debian.net/deps/dep5
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: e2defrag
 Source: http://launchpad.net/e2defrag
 
@@ -9,13 +9,13 @@ Copyright: 1992, 1993, 1994, 1997, 1998 Stephen C. Tweedie <sct@dsc.ed.ac.uk>
 	   1997 Ulrich Habel <espero@b31.hadiko.de>
 	   2001 Peter Moulder <pjm@bofh.asn.au>
 	   2008-2012 Phillip Susi <psusi@ubuntu.com>
-License: GPL
+License: GPL-1
 
 Files: debian/*
 Copyright: 2012 Phillip Susi <psusi@ubuntu.com>
-License: GPL
+License: GPL-1
 
-License: GPL
+License: GPL-1
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
  the Free Software Foundation.

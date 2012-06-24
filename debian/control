@@ -3,8 +3,9 @@ Section: admin
 Priority: extra
 Maintainer: Phillip Susi <psusi@ubuntu.com>
 Build-Depends: debhelper (>= 8.0.0), autotools-dev, libncurses-dev, bzip2, e2fslibs-dev
-Standards-Version: 3.9.2
+Standards-Version: 3.9.3
 Homepage: http://launchpad.net/e2defrag
+Vcs-Bzr: http://bazaar.launchpad.net/+branch/e2defrag/trunk/
 
 Package: e2defrag
 Architecture: any

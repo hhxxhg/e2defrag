@@ -114,7 +114,7 @@ report, when
 is given three times, also reports the inode priority
 list as it is read.
 .TP
-.BI \-i " inode-priority-file"
+.BI \-i " inode\-priority\-file"
 As of version 0.4, 
 .I defrag
 has a new facility which allows you to specify how to reorganise the
@@ -128,7 +128,7 @@ blocks for an inode are first allocated from the inode's native block group.
 A priority > 50 will ignore the native group and move the file as far to
 the left as possible.  A priority < -50 will ignore the native group and
 move the file as far to the right as possible.  All inodes have a default
-priority of zero if they are ommitted from the file or if no
+priority of zero if they are omitted from the file or if no
 .B \-i
 option is given.
 
@@ -149,7 +149,7 @@ number you choose will depend on how much physical and virtual memory
 you have available.  If unspecified, the pool is sized to use half
 of free memory.
 .TP
-.BI \-F " file-prio"
+.BI \-F " file\-prio"
 Sets the default priority for regular files.
 .TP
 .BI \-D " dir-prio"
