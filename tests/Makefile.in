@@ -7,7 +7,7 @@ VPATH = @srcdir@
 top_builddir = ..
 
 TESTS_ENVIRONMENT = sh -e ./nonroot.sh
-TESTS =  1M,1024,none 	1M,1024,sparse_super,filetype 	1M,2048,none 	1M,4096,sparse_super,filetype
+TESTS =  1M,1024,none 1M,1024,sparse_super,filetype 1M,2048,none 1M,4096,sparse_super,filetype 1M,1024,ext4,nojournal,holes,allocate
 
 .SUFFIXES:
 

@@ -15,7 +15,7 @@
 #include <linux/types.h>
 
 /* Define modes for the walk_zone functions */
-enum walk_zone_mode {WZ_SCAN, WZ_REMAP, WZ_FIXED_BLOCKS};
+enum walk_zone_mode {WZ_SCAN, WZ_REMAP, WZ_FIXED_BLOCKS, WZ_ALLOC, WZ_FREE};
 
 /* Block/buffer management prototypes */
 enum BufferType { OUTPUT, RESCUE, FORCE };

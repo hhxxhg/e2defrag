@@ -1,3 +1,14 @@
+e2defrag (0.81-1) unstable; urgency=low
+
+  * Rewrite extent handling code.  The previous aproach failed to
+    handle a number of corner cases.  The new code is cleaner and
+    has the added benefit of not wasting time relocating
+    uninitialized blocks.
+  * Added new testcase to test files with holes and uninitialized
+    extents.
+
+ -- Phillip Susi <psusi@ubuntu.com>  Thu, 05 Jul 2012 14:46:38 -0400
+
 e2defrag (0.80-1) unstable; urgency=low
 
   * Fixed missing man page

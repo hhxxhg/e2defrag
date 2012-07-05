@@ -1,7 +1,17 @@
-Public e2defrag release 0.79
+Public e2defrag release 0.81
 
 NEWS
 ====
+
+New in 0.81
+
+  - Rewrote extent handling code to resolve some errors
+  - Don't waste time relocating uninitialized extents
+
+New in 0.80:
+
+  - Fixed missing man page
+  - removed .py extension from dump2inodes script
 
 New in 0.79:
 

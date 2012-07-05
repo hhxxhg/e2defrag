@@ -686,24 +686,32 @@ int seek_to_inode(int i)
 
 void update_group_population(ulong znr, enum walk_zone_mode mode, ulong inode)
 {
-   unsigned i_group = (inode-1) / Super.s_inodes_per_group;
-   unsigned z_group = (znr - Super.s_first_data_block) / Super.s_blocks_per_group;
+  unsigned i_group = (inode-1) / Super.s_inodes_per_group;
+  unsigned z_group = (znr - Super.s_first_data_block) / Super.s_blocks_per_group;
 
-   assert(i_group < groups);
-   assert(z_group < groups);
+  assert(i_group < groups);
+  assert(z_group < groups);
 
-   if (mode == WZ_FIXED_BLOCKS) {
-       gp[z_group].native_blocks++;     /* Count fixed blocks as native */
-       return;
-   }
-   if (mode != WZ_SCAN)
-       return;
-   if (i_group == z_group)
-       gp[i_group].native_blocks++;
-   else {
-       gp[z_group].wants_away++;
-       gp[i_group].wants_back++;
-   }
+  if (mode == WZ_REMAP)
+    return;
+  if (mode == WZ_FIXED_BLOCKS) {
+    gp[z_group].native_blocks++;     /* Count fixed blocks as native */
+    return;
+  }
+  if (mode == WZ_FREE) {
+    if (i_group == z_group)
+      gp[i_group].native_blocks--;
+    else {
+      gp[z_group].wants_away--;
+      gp[i_group].wants_back--;
+    }
+  }
+  if (i_group == z_group)
+    gp[i_group].native_blocks++;
+  else {
+    gp[z_group].wants_away++;
+    gp[i_group].wants_back++;
+  }
 }
 
 /* The main problem with groups in is that their population is not
@@ -828,24 +836,22 @@ ulong choose_block(ulong inode)
 }
 
 int gp_stack_count;
+struct groups_population *saved_gp;
 
-struct groups_population *push_group_population()
+void save_group_population()
 {
-  struct groups_population *ogp;
-
   gp_stack_count++;
-  ogp = malloc(sizeof(struct groups_population)*groups);
-  if (!ogp)
+  saved_gp = malloc(sizeof(struct groups_population)*groups);
+  if (!saved_gp)
     die ("Out of memory");
-  memcpy (ogp, gp, sizeof(struct groups_population)*groups);
-  return ogp;
+  memcpy (saved_gp, gp, sizeof(struct groups_population)*groups);
 }
 
-void pop_group_population (struct groups_population *ogp)
+void restore_group_population ()
 {
   gp_stack_count--;
-  memcpy (gp, ogp, sizeof(struct groups_population)*groups);
-  free (ogp);
+  memcpy (gp, saved_gp, sizeof(struct groups_population)*groups);
+  free (saved_gp);
 }
 
 /* ---------------------------------------------------------------------*/

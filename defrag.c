@@ -167,14 +167,16 @@ static void optimise_zone (Block *znr)
 #ifndef NODEBUG
 static void validate_relocation_maps(void)
 {
-	Block i;
+	Block i, x;
 
 	for (i=first_zone; i < zones; i++)
 	{
-		if (map_reverse_get (i))
-			assert (map_forward_get (map_reverse_get (i)) == i);
-		if (map_forward_get (i))
-			assert (map_reverse_get(map_forward_get(i)) == i);
+		x = map_reverse_get (i);
+		if (x && x != -1)
+			assert (map_forward_get (x) == i);
+		x = map_forward_get (i);
+		if (x)
+			assert (map_reverse_get(x) == i);
 	}
 }
 #endif
@@ -380,196 +382,350 @@ static int walk_zone_tind (Block * znr, enum walk_zone_mode mode)
 }
 #endif /* HAS_TIND */
 
-#ifdef FS_IS_ext2
-static void walk_extents (struct ext3_extent_header *eh,
-			  enum walk_zone_mode mode,
-			  struct ext3_extent_header *alt)
+/**************************************************************************
+ * Extents are handled in 3 phases.  The first phase loads the extent tree
+ * into memory.  This walks the tree, one block at a time, copying the
+ * extents to a flat, linear extent array for easier processing.  In the
+ * process, we count the number of blocks in the tree.  The second phase
+ * walks the array of extents, allocating new blocks and building a new
+ * array of extents.  It first allocates enough blocks to hold the current
+ * extent tree, assuming that the new extent tree will be the same size.
+ * If the new extents won't fit in the space allocated, phase 2 is
+ * restarted, allocting more blocks this time for the extent tree.  If
+ * the size of the tree is smaller than allocated, and we have not already
+ * had to restart to grow the tree ( to prevent an infinite loop of grow,
+ * shrink, grow, etc ), then restart phase 2 with fewer blocks allocated
+ * to the extent tree.  Finally, phase 3 is the inverse of phase 1:
+ * take the new flat extent array and write it out to disk as a tree.
+ * In order to allow restarting phase2, the group population must be
+ * saved and updates to the relocation map must be disabled.  This means
+ * we do only simulations until we settle on the tree size, then do
+ * the real remap pass.
+ *
+ * Walking the tree requires a cursor to keep track of a few things:
+ *   1) A buffer holding the current tree node
+ *   2) The current index within that node
+ * And you need one of these for every level in the tree.  The lowest
+ * level ( zero ) contains extents, the others index the next level.
+ * The highest level of the tree is always stored right in the inode.
+ * We allow for trees to be as high as 4 levels.
+ *************************************************************************/
+
+signed int walk_extent_tree (struct ext3_extent_header *tree_root,
+			     enum walk_zone_mode mode)
 {
-  int ne = -1; /* new extent index */
-  int e; /* extent index */
-  int i; /* block index */
-  Block b;
-  struct ext3_extent *new_extents;
-  struct ext3_extent *extents = (struct ext3_extent *)eh+1;
-  __u16 max_len;
-  __u16 uninitialized = (extents[0].ee_len-1) & 0x8000;
-  __u16 last_uninit;
-  __u16 ee_len = uninitialized ? (extents[0].ee_len & 0x7FFF) : extents[0].ee_len;
-
-  if (uninitialized && ee_len == 0)
-    ee_len = EXT_UNINIT_MAX_LEN;
-  new_extents = alloca( sizeof( struct ext3_extent ) * (eh->eh_max+1) );
-  /* if we have been passed any overflow entries to merge, do so */
-  if (alt->eh_entries) {
-    memcpy (new_extents, (struct ext3_extent *)(alt+1),
-	    alt->eh_entries * sizeof(struct ext3_extent));
-    ne = alt->eh_entries;
-    alt->eh_entries = 0;
-  }
-  for( e = 0; e < eh->eh_entries; e++ )
-    {
-      last_uninit = uninitialized;
-      uninitialized = (extents[e].ee_len-1) & 0x8000;
-      ee_len = uninitialized ? (extents[e].ee_len & 0x7FFF) : extents[e].ee_len;
-      if (uninitialized && ee_len == 0)
-	ee_len = EXT_UNINIT_MAX_LEN;
-      if( extents[e].ee_start_hi )
-	die( "ee_start_hi != 0" );
-      if (uninitialized)
-	max_len = EXT_UNINIT_MAX_LEN;
-      else max_len = EXT_INIT_MAX_LEN;
-      for( i = 0; i < ee_len; i++ )
-	{
-	  b = extents[e].ee_start + i;
-	  walk_zone( &b, mode );
-	  if( ne == -1 ||
-	      new_extents[ne].ee_start + new_extents[ne].ee_len != b ||
-	      new_extents[ne].ee_len == max_len ||
-	      uninitialized != last_uninit )
-	    {
-	      /* can't merge block onto last extent, so allocate new one */
-	      if (ne != -1)
-		new_extents[ne].ee_len |= uninitialized;
-	      if (ne < eh->eh_max)
-		ne++;
-	      else {
-		/* switch to overflow */
-		if (eh == alt)
-		  die( "Overflowed alternate extent stack" );
-		ne = 0;
-		new_extents = (struct ext3_extent *)alt+1;
-		eh = alt;
-	      }
-	      new_extents[ne].ee_block = extents[e].ee_block + i;
-	      new_extents[ne].ee_start = b;
-	      new_extents[ne].ee_start_hi = 0;
-	      new_extents[ne].ee_len = 0;
-	      new_extents[ne].ee_block = extents[e].ee_block + i;
-	      last_uninit = uninitialized;
-	    }
-	    new_extents[ne].ee_len++;
-	}
-    }
-  if (ne != -1)
-    new_extents[ne].ee_len |= uninitialized;
-  /* copy replace old extents with new */
-  if( mode == WZ_REMAP )
-    {
-      eh->eh_entries = ne+1;
-      memcpy( extents, new_extents, sizeof( struct ext3_extent ) * eh->eh_entries );
-    }
-}
-
-/* Walk the given extent block.  If the header says this is level 0, then
- * the entries are the extents, so pass to walk_extents, otherwise, they
- * are ext3_extent_idx entries that point to lower level children.  We
- * remap children in two passes.  The first pass is a trial run that
- * figures out how many extents we can reduce the child extent blocks to.
- * The second pass actually remaps the children.  If we can reduce the
- * total children to a number that will fit in this level, then we promote
- * the children by copying them up to this level, reducing the depth of
- * this level by 1 and freeing the child index blocks in the process.
- * The promote parameter is 1 on entry if we are allowed to promote.
- * On the first pass we tell the child they are allowed to promote,
- * then only if all children can promote, do we allow them to do so
- * on the second pass.  This is to keep the tree balanced and its depth
- * uniform throughout.  
- * In the event that a child needs more extents than can fit, it will
- * return the additional extents in the alt extent block which we then
- * will pass to the next child to try and migrate them over if there is
- * room.  Once we have walked all children, any entries still in the
- * overflow stack need a new child.  If we have room to add a child
- * pointer at this level, allocate one and do so, then walk that
- * to store the overflow there.  If we can't allocate a new child then
- * we return the overflow and the parent has to deal with it.  At the
- * root level in the inode, any remaining extents after walking mean we
- * have to increase the depth of the tree.  In that case we move the
- * current entries to the overflow, allocate a new child, and the
- * second pass walk will move the children down. */
-
-signed int walk_extent_idx (struct ext3_extent_header *eh,
-		      enum walk_zone_mode mode,
-		      struct ext3_extent_header *alt,
-		      char promote)
-{
-  struct ext3_extent_idx *idx = (struct ext3_extent_idx *)eh+1;
+  struct ext3_extent_header *tree_buffer[4];
+  __u16 tree_index[4];
+  __u16 tree_level;
+  int old_extents_count = 0, new_extents_count;
+  struct ext3_extent *old_extents = 0, *new_extents, *last_new_extent;
+  __u16 tree_blocks_count = 0;
+  Block *tree_blocks = 0;
   int i;
-  char blk[MAX_BLOCK_SIZE];
-  char nblk[MAX_BLOCK_SIZE];
-  struct ext3_extent_header *neh = (struct ext3_extent_idx *)&nblk;
-  struct ext3_extent_idx *nidx = (struct ext3_extent_idx *)neh+1;
-  struct ext3_extent_header *ceh = (struct ext3_extent_header *)&blk;
-  struct groups_population *ogp;
-  char pass;
-  int children;
-  Block b;
-  signed int ret;
-  int ne;
+  char already_grown = 0;
+  char simulate = 1;
+  signed int block_delta = 0;
+  __u16 needed_tree_blocks;
+  const int entries_per_block = (EXT2_BLOCK_SIZE(&Super) - sizeof (struct ext3_extent_header)) /
+    sizeof (struct ext3_extent);
 
-  if (eh->eh_depth == 0) {
-    walk_extents (eh, mode, alt);
-    return 0;
-  }
-  /* if we have been passed any overflow entries to merge, do so */
-  if (alt->eh_entries) {
-    memcpy (nidx, (struct ext3_extent_idx *)(alt+1),
-	    alt->eh_entries * sizeof(struct ext3_extent_idx));
-    ne = alt->eh_entries;
-    alt->eh_entries = 0;
-  } else ne = 0;
-  for (pass = 0; pass < 2; pass++) {
-    ret = 0;
-    if (!pass && mode == WZ_REMAP)
-      ogp = push_group_population();
-    for (i = 0, children = 0; i < eh->eh_entries; i++)
-      {
-	set_attr (idx[i].ei_leaf, AT_DATA);
-	if (mode == WZ_FIXED_BLOCKS)
-	  {
-	    mark_fixed (idx[i].ei_leaf);
-	    set_attr (idx[i].ei_leaf, AT_BAD);
-	    badblocks++;
-	  }
-	b = idx[i].ei_leaf;
-	read_current_block (b, blk);
-	if (mode == WZ_REMAP)
-	  if (!(pass && promote)) {
-	    optimise_zone (&b);
-	    if (pass)
-	      idx[i].ei_leaf = b;
-	  }
-	  else {
-	    map_forward_set (idx[i].ei_leaf, 0);
-	    ret--;
-	  }
-	ret += walk_extent_idx (ceh, mode, alt, promote);
-	if (ceh->eh_depth && ceh->eh_depth != eh->eh_depth)
-	  promote = 0;
-	if (mode == WZ_REMAP && pass)
-	  if (promote)
-	    memcpy (nidx+children, ceh+1, ceh->eh_entries*sizeof(*idx));
-	  else if (!readonly)
-	    write_current_block (map_reverse_get(idx[i].ei_leaf), blk);
-	children += ceh->eh_entries;
+  /* Phase 1: walk the tree */
+  tree_level = tree_root->eh_depth;
+  tree_index[tree_level] = 0;
+  tree_buffer[tree_level] = tree_root;
+  /* allocate buffers for the lower levels */
+  while (tree_level--)
+    tree_buffer[tree_level] = malloc (EXT2_BLOCK_SIZE(&Super));
+  tree_level = tree_root->eh_depth;
+    
+  if (tree_root->eh_magic != EXT3_EXT_MAGIC)
+    die ("extent tree root bad magic");
+
+  /* we're done when we have come back to the root and
+     processed the last entry in it */
+  while (1)
+    {
+      if (tree_level == 0) {
+	/* we have reached extents */
+	old_extents_count += tree_buffer[tree_level]->eh_entries;
+	old_extents = realloc (old_extents, old_extents_count * sizeof(struct ext3_extent));
+	memcpy (old_extents + old_extents_count - tree_buffer[tree_level]->eh_entries,
+		tree_buffer[tree_level]+1,
+		sizeof(struct ext3_extent) * tree_buffer[tree_level]->eh_entries);
+	tree_index[0] = tree_buffer[0]->eh_entries - 1;
+	while (++tree_index[tree_level] >= tree_buffer[tree_level]->eh_entries)
+	  /* finished with this node, go up a level and over one */
+	  if (tree_level == tree_root->eh_depth)
+	    break; /* we're done */
+	  else tree_level++;
       }
-    if (mode != WZ_REMAP)
-      break;
-    if (!pass) {
-      if (children+1 >= eh->eh_max)
-	promote = 0;
-      pop_group_population (ogp);
-    } else if (promote) {
-      eh->eh_depth--;
-      if (children > eh->eh_max)
-	die ("Too many children to merge");
-      eh->eh_entries = children;
-      memcpy( idx, nidx, sizeof(*idx) * children );
+      if (tree_level == tree_root->eh_depth &&
+	  tree_index[tree_level] == tree_root->eh_entries)
+	break; /* we're done */
+      /* load the new block */
+      struct ext3_extent_idx *idx = (struct ext3_extent_idx *)(tree_buffer[tree_level]+1);
+      idx += tree_index[tree_level];
+      if (idx->ei_leaf_hi)
+	die ("ei_leaf_hi != 0");
+      read_current_block (idx->ei_leaf,
+			  (char *)tree_buffer[--tree_level]);
+      if (mode == WZ_REMAP)
+	map_forward_set (idx->ei_leaf, 0); /* free block */
+      tree_index[tree_level] = 0;
+      if (tree_buffer[tree_level]->eh_magic != EXT3_EXT_MAGIC)
+	die ("extent tree bad magic");
+      if (tree_level != tree_buffer[tree_level]->eh_depth)
+	die ("extent block has wrong depth");
+      tree_blocks_count++;
+      tree_blocks = realloc (tree_blocks, tree_blocks_count * sizeof(Block));
+      tree_blocks[tree_blocks_count-1] = idx->ei_leaf;
+      Block b = idx->ei_leaf;
+      if (mode != WZ_REMAP)
+	walk_zone (&b, mode);
+    }
+  /* free buffers */
+  while (tree_level--)
+    free (tree_buffer[tree_level]);
+  if (mode != WZ_REMAP) {
+    /* just need walk_zone to scan data blocks */
+    for (i = 0; i < old_extents_count; i++) {
+      Block start, end;
+      /* block = logical: relative to file, start = physical: relative to disk */
+      __u16 ee_len;
+      ee_len = old_extents[i].ee_len;
+      if (ee_len > 0x8000) {
+	/* decode uninitialized flag and length */
+	ee_len &= 0x7FFF;
+      }
+      start = old_extents[i].ee_start;
+      end = start + ee_len;
+      for ( ; start < end; start++ )
+	walk_zone (&start, mode);
+    }
+    goto cleanup_1;
+  }
+  /* Phase 2: Remap the blocks */
+  save_group_population(); /* so we can restore and retry if needed */
+  goto phase2;
+
+ phase2_restart:
+  block_delta += (needed_tree_blocks - tree_blocks_count);
+  restore_group_population();
+  if (simulate)
+    save_group_population(); /* so we can restore and retry if needed */
+  if (needed_tree_blocks < tree_blocks_count) {
+    /* free some blocks */
+    while (needed_tree_blocks < tree_blocks_count) {
+      map_forward_set (tree_blocks[--tree_blocks_count], 0);
+      update_group_population (tree_blocks[tree_blocks_count],
+			       WZ_FREE, current_inode);
+    }
+    tree_blocks = realloc (tree_blocks, tree_blocks_count * sizeof(Block));
+  }
+  if (needed_tree_blocks > tree_blocks_count) {
+    /* allocate some blocks */
+    Block b = zones - 1;
+    tree_blocks = realloc (tree_blocks, sizeof(Block) * needed_tree_blocks);
+    while (needed_tree_blocks > tree_blocks_count) {
+      /* find a block that is currently free */
+      while (map_forward_get (b))
+	b--;
+      tree_blocks[tree_blocks_count++] = b;
+      update_group_population (b, WZ_ALLOC, current_inode);
     }
   }
-  return ret;
-}
-#endif
+  tree_root->eh_depth = tree_level;
+  free (new_extents);
+ phase2:
+  new_extents_count = 0;
+  new_extents = 0;
+  last_new_extent = 0;
+    
+  /* first allocate the blocks to hold the extent tree */
+  for (i = 0; i < tree_blocks_count; i++) {
+    Block b = tree_blocks[i];
+    walk_zone (&b, mode);
+  }
+  /* now do the data blocks */
+  for (i = 0; i < old_extents_count; i++) {
+    Block start, end, block;
+    /* block = logical: relative to file, start = physical: relative to disk */
+    __u16 ee_len;
+    __u16 uninitialized;
+    ee_len = old_extents[i].ee_len;
+    if (ee_len > 0x8000) {
+      /* decode uninitialized flag and length */
+      uninitialized = 0x8000;
+      ee_len &= 0x7FFF;
+    } else uninitialized = 0;
+    block = old_extents[i].ee_block;
+    start = old_extents[i].ee_start;
+    end = start + ee_len;
+    for ( ; start < end; start++,block++ ) {
+      Block nstart = start;
+      if (uninitialized) {
+	/* don't bother relocating uninitialized blocks */
+	nstart = choose_block (current_inode);
+	if (!simulate) {
+	  map_forward_set (start, 0);
+	  map_forward_set (0, nstart);
+	}
+      } else optimise_zone (&nstart);
 
+      if (last_new_extent) {
+	__u16 last_uninitialized;
+	__u16 last_ee_len;
+	if (last_new_extent->ee_len > 0x8000) {
+	  last_uninitialized = 0x8000;
+	  last_ee_len = last_new_extent->ee_len & 0x7FFF;
+	} else {
+	  last_ee_len = last_new_extent->ee_len;
+	  last_uninitialized = 0;
+	}
+	/* we can only append to the last new extent if:
+	   1) its uninitialized flag matches the current old extent
+	   2) its logical block follows that of the current block
+	   3) its physical block follows that of the last new extent
+	   4) The length of the last new extent is not already at max */
+	if (uninitialized != last_uninitialized ||
+	    block != last_new_extent->ee_block + last_ee_len ||
+	    nstart != last_new_extent->ee_start + last_ee_len ||
+	    last_new_extent->ee_len == 0x8000 ||
+	    last_new_extent->ee_len == 0xFFFF)
+	  last_new_extent = 0;
+      }
+      if (last_new_extent)
+	last_new_extent->ee_len++; /* append */
+      else {
+	/* allocat a new extent */
+	new_extents_count++;
+	new_extents = realloc (new_extents,
+			       new_extents_count * sizeof(struct ext3_extent));
+	last_new_extent = new_extents + new_extents_count - 1;
+	last_new_extent->ee_len = 1 | uninitialized;
+	last_new_extent->ee_start = nstart;
+	last_new_extent->ee_start_hi = 0;
+	last_new_extent->ee_block = block;
+      }
+    }
+  }
+  /* calculate how many blocks are needed to hold the extent tree */
+  if (new_extents_count <= 4) {
+    needed_tree_blocks = 0; /* can fit in inode */
+    tree_level = 0;
+  }
+  else if (new_extents_count < entries_per_block * 4)
+    {
+      /* can fit in a level 1 tree */
+      needed_tree_blocks = ((new_extents_count - 1) / entries_per_block) + 1;
+      tree_level = 1;
+    }
+  else if (new_extents_count < entries_per_block * entries_per_block * 4)
+    {
+      /* can fit in a level 2 tree */
+      needed_tree_blocks = ((new_extents_count - 1) / entries_per_block) + 1;
+      /* add count of level 1 nodes needed to hold that many level 0 leafs */
+      needed_tree_blocks += ((needed_tree_blocks - 1) / entries_per_block) + 1;
+      tree_level = 2;
+    }
+  else if (new_extents_count < entries_per_block * entries_per_block * entries_per_block * 4)
+    {
+      /* needs a level 3 tree */
+      int needed_level_0_blocks = ((new_extents_count - 1) / entries_per_block) + 1;
+      /* add count of level 1 nodes needed to hold that many level 0 leaves */
+      int needed_level_1_blocks = ((needed_level_0_blocks - 1) / entries_per_block) + 1;
+      /* add count of level 2 nodes needed to hold that many level 1 nodes */
+      int needed_level_2_blocks = ((needed_level_1_blocks - 1) / entries_per_block) + 1;
+      needed_tree_blocks = needed_level_0_blocks + needed_level_1_blocks + needed_level_2_blocks;
+      tree_level = 3;
+    } else die ("Too many extents");
+  /* restart phase 2 if we can't fit the extents in the blocks allocated,
+     or if we can reduce the allocated blocks */
+  if (needed_tree_blocks > tree_blocks_count) {
+    already_grown = 1;
+    goto phase2_restart;
+  }
+  if (!already_grown && needed_tree_blocks < tree_blocks_count) {
+    goto phase2_restart;
+  }
+  if (simulate) {
+    simulate = 0;
+    goto phase2_restart;
+  }
+  if (readonly)
+    goto cleanup_2;
+  /* Phase 3: write out extents */
+  tree_level = tree_root->eh_depth;
+  tree_index[tree_level] = 0;
+  tree_buffer[tree_level] = tree_root;
+  memset (tree_root+1, 0, sizeof(struct ext3_extent) * tree_root->eh_max);
+  /* allocate buffers for the lower levels */
+  while (tree_level--)
+    tree_buffer[tree_level] = malloc (EXT2_BLOCK_SIZE(&Super));
+  tree_level = tree_root->eh_depth;
+  tree_root->eh_depth = tree_level;
+  i = 0;
+  tree_root->eh_entries = 0;
+  int tree_i = 0;
+  while (1)
+    {
+      if (tree_level == 0) {
+	/* we have reached extents */
+	if (new_extents_count - i > tree_buffer[tree_level]->eh_max)
+	  tree_buffer[tree_level]->eh_entries = tree_buffer[tree_level]->eh_max;
+	else tree_buffer[tree_level]->eh_entries = new_extents_count - i;
+	memcpy (tree_buffer[tree_level]+1,
+		new_extents + i,
+		sizeof(struct ext3_extent) * tree_buffer[tree_level]->eh_entries);
+	i += tree_buffer[0]->eh_entries;
+	tree_index[0] = tree_buffer[0]->eh_max;
+	while (tree_index[tree_level] >= tree_buffer[tree_level]->eh_max ||
+	       i == new_extents_count) {
+	  struct ext3_extent *last_extent = (struct ext3_extent *)(tree_buffer[tree_level])+1;
+	  /* finished with this node, go up a level and over one */
+	  if (tree_level == tree_root->eh_depth)
+	    break; /* already at the root */
+	  tree_level++;
+	  /* update the keys at this index */
+	  struct ext3_extent_idx *idx = (struct ext3_extent_idx *)(tree_buffer[tree_level]+1);
+	  idx += tree_index[tree_level];
+	  idx->ei_block = last_extent->ee_block;
+	  /* write out node to its old location */
+	  write_current_block (map_reverse_get (idx->ei_leaf), (char *)tree_buffer[tree_level-1]);
+	  /* move over one */
+	  tree_index[tree_level]++;
+	}
+      }
+      if (tree_level == tree_root->eh_depth &&
+	  i == new_extents_count)
+	break; /* we're done */
+      /* create the new block */
+      struct ext3_extent_idx *idx = (struct ext3_extent_idx *)(tree_buffer[tree_level]+1);
+      idx += tree_index[tree_level];
+      idx->ei_leaf_hi = 0;
+      assert (tree_i < tree_blocks_count);
+      idx->ei_leaf = map_forward_get (tree_blocks[tree_i++]);
+      idx->ei_unused = 0;
+      tree_buffer[tree_level]->eh_entries++;
+      tree_level--;
+      tree_index[tree_level] = 0;
+      /* zero the block */
+      memset (tree_buffer[tree_level], 0, EXT2_BLOCK_SIZE(&Super));
+      tree_buffer[tree_level]->eh_magic = EXT3_EXT_MAGIC;
+      tree_buffer[tree_level]->eh_depth = tree_level;
+      tree_buffer[tree_level]->eh_max = entries_per_block;
+    }
+  /* free buffers */
+  while (tree_level--)
+    free (tree_buffer[tree_level]);
+ cleanup_2:
+  free (tree_blocks);
+  free (new_extents);
+ cleanup_1:
+  free (old_extents);
+  return block_delta;
+}
+	
 static void walk_inode (struct d_inode *inode, enum walk_zone_mode mode)
 {
 	int i;
@@ -581,14 +737,7 @@ static void walk_inode (struct d_inode *inode, enum walk_zone_mode mode)
 	if (inode->i_flags & EXT4_EXTENTS_FL)
 	  {
 	    struct ext3_extent_header *eh;
-	    struct ext3_extent_header *alt;
 
-	    alt = alloca (4096);
-	    alt->eh_magic = EXT3_EXT_MAGIC;
-	    alt->eh_entries = 0;
-	    alt->eh_max = (4096 - sizeof (struct ext3_extent_header)) /
-	      sizeof (struct ext3_extent);
-	    alt->eh_depth = 0;
 	    eh = (struct ext3_extent_header *)&inode->i_block[0];
 	    if (eh->eh_magic != EXT3_EXT_MAGIC)
 	      die ("Bad eh_magic");
@@ -600,8 +749,8 @@ static void walk_inode (struct d_inode *inode, enum walk_zone_mode mode)
 	    blocks = ((long long)inode->osd2.linux2.l_i_blocks_hi) << 16;
 	    blocks |= inode->i_blocks;
 	    if (inode->i_flags & EXT4_HUGE_FILE_FL)
-	      blocks += walk_extent_idx (eh, mode, alt, 1);
-	    blocks += (walk_extent_idx (eh, mode, alt, 1) * (EXT2_BLOCK_SIZE (&Super) / 512));
+	      blocks += walk_extent_tree (eh, mode);
+	    blocks += (walk_extent_tree (eh, mode) * (EXT2_BLOCK_SIZE (&Super) / 512));
 	    inode->osd2.linux2.l_i_blocks_hi = blocks>>32;
 	    inode->i_blocks = blocks;
 	    return;

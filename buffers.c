@@ -833,8 +833,10 @@ void remap_disk_blocks (void)
 	{
 		/* move to next extent if the dest cursor has moved
 		   past the end of this one, or if this extent does
-		   not move ( src == dest ) */
-		while (dest_cursor > e->new + e->count || e->new == e->old)
+		   not move ( src == dest or old == 0 ) */
+		while (dest_cursor > e->new + e->count ||
+		       e->new == e->old ||
+		       e->old == 0)
 		{
 			e = map_reverse_next (e);
 			if (!e)
@@ -890,17 +892,12 @@ void remap_disk_blocks (void)
 		}
 		else
 		{
-			/* No, the block is not in the hash table:
-			   if the block can be found on disk, read it;
-			   otherwise, the block will remain empty and
-			   can be skipped. */
-			if (!source)
-				continue;
 			/* if the source is to the left of the cursor,
 			   and it had an incoming block, we already
 			   rescued it and must have migrated, so don't
 			   transfer it a second time */
-			if (source < dest_cursor && map_reverse_get (source))
+			Block b = map_reverse_get (source);
+			if (source < dest_cursor && b != 0 && b != -1)
 				continue;
 			allocate_buffer (dest_cursor, OUTPUT);
 		}

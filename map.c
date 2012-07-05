@@ -1,7 +1,21 @@
 /* map.c: new block translation matrix tracking system for the
- * Linux file system defragmenter.
+ * Linux file system defragmenter.  It efficiently keeps track
+ * of where disk blocks need moved to using extents that are
+ * indexed both by source block and destination block in a
+ * rbtree.  This allows for quickly looking up both what block
+ * needs moved to a destination, and what destination a given
+ * block needs moved to, while using a minimum of memory.
  *
- * Copyright (C) 2010 Phillip Susi <psusi@cfl.rr.com>
+ * If a from/to mapping does not exist for a pair of blocks
+ * then lookups will return zero.  Setting the destination
+ * for a block to zero deletes any existing mapping.  Setting
+ * the source block to zero is a special case that marks
+ * the block as in use, but does not need transfered from
+ * any existing block.  Lookups on such blocks will return -1
+ * to distinguish from no mapping, or a mapping from a valid
+ * block.
+ *
+ * Copyright (C) 2010,2012 Phillip Susi <psusi@ubuntu.com>
  *
  * This file may be redistributed under the terms of the GNU General
  * Public License.
@@ -144,9 +158,11 @@ Block map_reverse_get (Block b)
 	struct map_extent *e;
 
 	e = rb_search_map_reverse (b);
-	if (e)
-		return b - e->new + e->old;
-	else return 0;
+	if (!e)
+		return 0;
+	if (e->old == 0)
+		return -1; /* we created, did not exist before */
+	return b - e->new + e->old;
 }
 
 struct map_extent *map_reverse_get_extent (Block b)
@@ -207,7 +223,7 @@ void map_forward_set (Block old, Block new)
 	char add = new ? 1 : 0;
 
 	if (old == 0)
-		goto ret;
+		goto reverse;
 	e = rb_search_map_forward (old);
 	if (e) {
 		/* exact match, may have to split */
@@ -248,6 +264,7 @@ void map_forward_set (Block old, Block new)
 			/* now add the new extent */
 		}
 	}
+reverse:
 	/* first need to remove the reverse mapping for the destination */
 	e = rb_search_map_reverse (new);
 	if (e) {
@@ -312,33 +329,42 @@ void map_forward_set (Block old, Block new)
 	}
 	if (!add)
 		goto ret;
-	old++;
+	if (old)
+		old++;
 	new++;
-	e = rb_search_map_forward(old);
-	if (e && e->new == new) {
+	e = rb_search_map_reverse (new);
+	if (e && e->old == old) {
 		/* head merge */
 		rb_erase (&e->rb_reverse_node, &reverse_tree_root);
-		rb_erase (&e->rb_forward_node, &forward_tree_root);
-		e->old--;
+		if (old)
+			rb_erase (&e->rb_forward_node, &forward_tree_root);
+		if (e->old)
+			e->old--;
 		e->new--;
 		e->count++;
-		rb_insert_map_forward(e);
+		if (old)
+			rb_insert_map_forward(e);
 		rb_insert_map_reverse(e);
 		goto ret;
 	}
-	old -= 2;
+	if (old)
+		old -= 2;
 	new -= 2;
-	e = rb_search_map_forward (old);
-	if (e && (e->new + e->count) == new) {
+	e = rb_search_map_reverse (new);
+	if (e && ((e->old + e->count) == old ||
+		  (old == 0 && e->old == 0))) {
 		/* tail merge */
 		rb_erase (&e->rb_reverse_node, &reverse_tree_root);
-		rb_erase (&e->rb_forward_node, &forward_tree_root);
+		if (old)
+			rb_erase (&e->rb_forward_node, &forward_tree_root);
 		e->count++;
-		rb_insert_map_forward(e);
+		if (old)
+			rb_insert_map_forward(e);
 		rb_insert_map_reverse(e);
 		goto ret;
 	}
-	old++;
+	if (old)
+		old++;
 	new++;
 	/* simple case, no existing extent so add one */
 	e = malloc (sizeof(struct map_extent));
@@ -346,7 +372,8 @@ void map_forward_set (Block old, Block new)
 	e->old = old;
 	e->new = new;
 	e->count = 0;
-	rb_insert_map_forward(e);
+	if (old)
+		rb_insert_map_forward(e);
 	rb_insert_map_reverse(e);
  ret:
 	return;
