@@ -7,6 +7,10 @@ e2defrag (0.81-1) unstable; urgency=low
   * Added new testcase to test files with holes and uninitialized
     extents.
   * Added throughput indicator
+  * Changed way in which free buffers are allocated so it is more
+    likely they are allocated in order, allowing more requests to
+    be merged into fewer syscalls.  This gives 2-3% better
+    throughput.
 
  -- Phillip Susi <psusi@ubuntu.com>  Thu, 05 Jul 2012 14:46:38 -0400
 

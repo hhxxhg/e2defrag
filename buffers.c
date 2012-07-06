@@ -48,7 +48,6 @@
 static char tmps[128];
 int pool_size;
 Buffer *pool;
-Buffer *first_free_buffer;
 static Buffer **select_set;
 static int select_set_size;
 static int free_buffers, count_output_buffers, count_rescue_buffers;
@@ -65,6 +64,7 @@ char queue_direction;
 #define QUEUE_MAX 1024
 struct iovec queue[QUEUE_MAX];
 Block dest_cursor;
+int next_free_buffer;
 
 /* We will hash buffered blocks on the least significant bits of the
    block's dest_zone */
@@ -132,12 +132,9 @@ void init_buffer_tables()
 	/* Set up the free buffer list */
 	for (i=0; i<pool_size-1; i++)
 	{
-		buffer(i)->next = buffer(i+1);
 		buffer(i)->datap = bp;
 		bp += block_size;
 	}
-	buffer(pool_size-1)->next = 0;
-	first_free_buffer = buffer(0);
 	free_buffers = pool_size;
 	count_output_buffers = count_rescue_buffers = 0;
 }
@@ -161,14 +158,13 @@ static Buffer ** hash_lookup (Block zone)
 static Buffer * allocate_buffer (Block zone, BufferType btype)
 {
 	Buffer * b;
-	if (!first_free_buffer)
+	if (next_free_buffer >= select_set_size)
 		die ("No free buffers");
 	assert (free_buffers);
 	assert (!(hash_lookup(zone)));
 
 	/* Remove a buffer from the free list */
-	b = first_free_buffer;
-	first_free_buffer = first_free_buffer->next;
+	b = select_set[next_free_buffer++];
 	assert (!b->in_use);
 	b->in_use = 1;
 	
@@ -207,7 +203,6 @@ static void free_buffer (Buffer *b)
 		printf ("DEBUG: free_buffer (%lu)\n", 
 			(unsigned long) b->dest_zone);
 	assert (b->in_use);
-	assert (first_free_buffer ? free_buffers : !free_buffers);
 	b->in_use = 0;
 
 	/* Unlink this buffer from the hash table */
@@ -215,10 +210,6 @@ static void free_buffer (Buffer *b)
 	assert (p);
 	assert ((*p) == b);
 	*p = b->next;
-
-	/* Link the buffer into the free list */
-	b->next = first_free_buffer;
-	first_free_buffer = b;
 
 	/* Update buffer counts */
 	free_buffers++;
@@ -286,6 +277,19 @@ static void select_buffers (int (*fn) (const Buffer *))
 	}
 	if (debug)
 		printf ("DEBUG: selected %d buffers\n", select_set_size);
+}
+
+static void select_free_buffers ()
+{
+	int i;
+	
+	select_set_size = 0;
+	for (i=0; i<pool_size; i++)
+	{
+		if (!buffer(i)->in_use)
+			select_set[select_set_size++] = buffer(i);
+	}
+	next_free_buffer = 0;
 }
 
 /* Compare two buffers based on their dest_zone fields, for use by
@@ -401,6 +405,8 @@ void queue_flush()
 {
   ssize_t read;
 
+  if (queue_count == 0)
+    return;
   if (queue_direction) {
     read = writev (IN, queue, queue_count);
     if (read != queue_block_count * block_size) {
@@ -831,6 +837,7 @@ void remap_disk_blocks (void)
 	   output buffer. */
 	e = map_reverse_first ();
 	dest_cursor = e->new;
+	select_free_buffers ();
 	do
 	{
 		/* move to next extent if the dest cursor has moved
@@ -850,6 +857,7 @@ void remap_disk_blocks (void)
 		if (free_buffers < 4)
 		{
 			get_some_buffer_space ();
+			select_free_buffers ();
 			/* forces may have changed the map, invalidating the
 			   current extent.  Look up new one */
 			e = map_reverse_get_extent_next (dest_cursor);
