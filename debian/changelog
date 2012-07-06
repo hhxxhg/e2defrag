@@ -11,6 +11,10 @@ e2defrag (0.81-1) unstable; urgency=low
     likely they are allocated in order, allowing more requests to
     be merged into fewer syscalls.  This gives 2-3% better
     throughput.
+  * Update superblock free blocks count when done.  This prevents
+    a subsequent run of e2defrag from complaining after the count
+    has changed due to extent block allocation/free, and e2fsck
+    would sometimes complain as well.
 
  -- Phillip Susi <psusi@ubuntu.com>  Thu, 05 Jul 2012 14:46:38 -0400
 

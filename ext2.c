@@ -599,6 +599,7 @@ void salvage_free_zones (void)
     for(n = 0; n < groups; n++)
       bg[n].bg_free_blocks_count = 0;
   }
+  FREEBLOCKSCOUNT = 0;
 
   memset( zone_map, 0, bmp_zones / CHARBITS);
 
@@ -635,6 +636,7 @@ void salvage_free_zones (void)
     unsigned n;
 
     for(n = 0; n < groups; n++) {
+      FREEBLOCKSCOUNT += bg[n].bg_free_blocks_count;
       pos = (loff_t) bg[n].bg_block_bitmap * block_size;
       if( Super.s_feature_ro_compat & EXT4_FEATURE_RO_COMPAT_GDT_CSUM &&
 	  bg[n].bg_free_blocks_count == Super.s_blocks_per_group &&
@@ -662,6 +664,7 @@ void salvage_free_zones (void)
        != (ssize_t) (sizeof(struct ext2_group_desc) * groups))
       die( "Can't write group descriptors");
   }
+  /* update superblock free blocks count */
 }
 
 int seek_to_inode(int i)
