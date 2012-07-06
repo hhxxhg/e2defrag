@@ -1200,6 +1200,13 @@ int main (int argc, char ** argv)
 		sprintf (s,"%6d migrations, %8d forces",
 			 count_buffer_migrates, count_buffer_forces);
                 add_comment(s);
+		unsigned long mb = (((unsigned long) count_buffer_writes >> 10)
+				    * (block_size >> 7))
+		  >> (20 - 10 - 7);
+		sprintf (s, "avg transfer speed: %.1f MB/s",
+			 (float)mb / (time(NULL) - transfer_start_time));
+		if (!readonly)
+			add_comment(s);
                 display_comments(" Relocation statistics ");
 	}
         

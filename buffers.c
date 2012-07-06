@@ -54,6 +54,7 @@ static int select_set_size;
 static int free_buffers, count_output_buffers, count_rescue_buffers;
 
 unsigned count_buffer_writes = 0, count_buffer_reads = 0;
+time_t transfer_start_time;
 int count_write_groups = 0, count_read_groups = 0;
 int count_buffer_migrates = 0, count_buffer_forces = 0;
 int count_buffer_read_aheads = 0;
@@ -824,6 +825,7 @@ void remap_disk_blocks (void)
 			    * (block_size >> 7))
 			   >> (20 - 10 - 7));
        	assert (fcntl (IN, F_SETFL, O_DIRECT)==0);
+	transfer_start_time = time(NULL);
 	/* Walk through each disk block sequentially, rescuing 
 	   previous contents and reading the new contents into the 
 	   output buffer. */
@@ -864,11 +866,18 @@ void remap_disk_blocks (void)
 				dest_cursor = e->new;
 			if (verbose)
 			{
-				stat_line( "Relocated : %lu MB (%u%%)",
-					   (((unsigned long) count_buffer_writes >> 10)
-					    * (block_size >> 7))
-					   >> (20 - 10 - 7),
-					   (count_buffer_writes * 100) / blocks_to_relocate);
+				unsigned long mb = (((unsigned long) count_buffer_writes >> 10)
+						    * (block_size >> 7))
+					>> (20 - 10 - 7);
+				if (!readonly)
+					stat_line( "Relocated : %lu MB (%u%%) %.1f MB/s",
+						   mb,
+						   (count_buffer_writes * 100) / blocks_to_relocate,
+						   (float)mb / (time(NULL) - transfer_start_time));
+				else stat_line( "Relocated : %lu MB (%u%%)",
+						mb,
+						(count_buffer_writes * 100) / blocks_to_relocate);
+
 				/* The funny shifting order is just to avoid overflow. */
 			}
 		}

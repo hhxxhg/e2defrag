@@ -6,6 +6,7 @@ e2defrag (0.81-1) unstable; urgency=low
     uninitialized blocks.
   * Added new testcase to test files with holes and uninitialized
     extents.
+  * Added throughput indicator
 
  -- Phillip Susi <psusi@ubuntu.com>  Thu, 05 Jul 2012 14:46:38 -0400
 

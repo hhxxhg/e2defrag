@@ -124,6 +124,7 @@ extern unsigned count_buffer_writes, count_buffer_reads;
 extern int count_write_groups, count_read_groups;
 extern int count_buffer_migrates, count_buffer_forces;
 extern int count_buffer_read_aheads;
+extern time_t transfer_start_time;
 
 void read_buffer_data (Buffer *b);
 void write_buffer_data_at (Buffer *b, Block dest);
