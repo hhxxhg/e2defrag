@@ -542,7 +542,7 @@ static __u16 const crc16_table[256] = {
  * @param len     number of bytes in the buffer
  * @return        the updated CRC value
  */
-__u16 ext2fs_crc16(__u16 crc, const void *buffer, unsigned int len)
+static __u16 ext2fs_crc16(__u16 crc, const void *buffer, unsigned int len)
 {
 	const unsigned char *cp = buffer;
 
@@ -841,7 +841,7 @@ ulong choose_block(ulong inode)
 int gp_stack_count;
 struct groups_population *saved_gp;
 
-void save_group_population()
+void save_group_population(void)
 {
   gp_stack_count++;
   saved_gp = malloc(sizeof(struct groups_population)*groups);
@@ -850,7 +850,7 @@ void save_group_population()
   memcpy (saved_gp, gp, sizeof(struct groups_population)*groups);
 }
 
-void restore_group_population ()
+void restore_group_population (void)
 {
   gp_stack_count--;
   memcpy (gp, saved_gp, sizeof(struct groups_population)*groups);

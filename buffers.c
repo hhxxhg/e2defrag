@@ -18,7 +18,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <linux/fcntl.h>
+#include <sys/mman.h>
 #include <errno.h>
+#include <time.h>
 #include "defrag.h"
 #include "map.h"
 
@@ -65,10 +67,11 @@ char queue_direction;
 struct iovec queue[QUEUE_MAX];
 Block dest_cursor;
 int next_free_buffer;
+static char *buffer_pool;
 
 /* We will hash buffered blocks on the least significant bits of the
    block's dest_zone */
-#define HASH_SIZE 16384
+#define HASH_SIZE 32768
 static Buffer * (hash[HASH_SIZE]) = {0};
 #define hash_list(zone) (hash[((unsigned) (zone)) % (HASH_SIZE)])
 
@@ -88,10 +91,10 @@ void io_error(const char *message)
    called after the fs-dependent code has been initialised (typically
    in read_tables() ) so that the block size variables have been
    correctly initialised. */
+
 void init_buffer_tables()
 {
 	int i;
-	char *bp;
 	if (debug)
 		printf ("DEBUG: init_buffer_tables()\n");
 	
@@ -99,42 +102,29 @@ void init_buffer_tables()
 	if (pool_size == 0)
 	{
 		/* auto detect pool size: use half of free mem */
-		FILE *info;
-		int memfree, membuffers, memcache;
+		long memfree = sysconf (_SC_AVPHYS_PAGES);
+		long pagesz = sysconf (_SC_PAGESIZE);
 
-		info = fopen ("/proc/meminfo", "r");
-		if (!info)
-			die ("Unable to open /proc/meminfo.");
-		i = fscanf (info, "MemTotal: %*d kB MemFree: %d kB Buffers: %d kB Cached: %d kB",
-			    &memfree, &membuffers, &memcache);
-		fclose (info);
-		if (i != 3)
-			die ("Error parsing /proc/meminfo.");
-		memfree += membuffers;
-		memfree += memcache;
-		pool_size = memfree / (block_size / 512);
+		if( memfree == -1 || pagesz == -1 )
+			die ("Can't detect free memory, try specifying pool size.");
+		memfree *= pagesz;
+		pool_size = memfree / block_size / 2;
 		if (verbose)
 			stat_line ("Auto detected pool size of %d buffers", pool_size);
 	}
-	pool = (Buffer *) malloc (pool_size * sizeof(Buffer));
+	pool = (Buffer *) malloc ((size_t)pool_size * sizeof(Buffer));
 	if (!pool)
 		die ("Unable to allocate buffer pool.");
-	memset (pool, 0, pool_size * sizeof(Buffer));
-	bp = malloc ((pool_size * block_size) + 4096);
-	bp = (char *)(((unsigned long)bp + 0xFFFUL) & ~0xFFFUL);
-	if (!bp)
+	memset (pool, 0, (size_t)pool_size * sizeof(Buffer));
+	buffer_pool = mmap (NULL, (size_t)pool_size * block_size, PROT_READ | PROT_WRITE,
+			    MAP_ANONYMOUS | MAP_PRIVATE | MAP_POPULATE, -1, 0);
+	if (buffer_pool == MAP_FAILED)
 	  die ("Unable to allocate buffer space.");
-	select_set = (Buffer **) malloc (pool_size *
+	select_set = (Buffer **) malloc ((size_t)pool_size *
 					 sizeof(*select_set));
 	if (!select_set)
 		die ("Unable to allocate pool select set");
 	select_set_size = 0;
-	/* Set up the free buffer list */
-	for (i=0; i<pool_size-1; i++)
-	{
-		buffer(i)->datap = bp;
-		bp += block_size;
-	}
 	free_buffers = pool_size;
 	count_output_buffers = count_rescue_buffers = 0;
 }
@@ -182,6 +172,9 @@ static Buffer * allocate_buffer (Block zone, BufferType btype)
 		break;
 	case RESCUE:
 		count_rescue_buffers++;
+		break;
+	case FORCE:
+		assert(0);
 		break;
 	}
 
@@ -242,6 +235,9 @@ static void set_buffer_type (Buffer *b, BufferType btype)
 	case RESCUE:
 		count_rescue_buffers--;
 		break;
+	case FORCE:
+		assert(0);
+		break;
 	}
 	b->btype = btype;
 	switch (btype)
@@ -279,7 +275,7 @@ static void select_buffers (int (*fn) (const Buffer *))
 		printf ("DEBUG: selected %d buffers\n", select_set_size);
 }
 
-static void select_free_buffers ()
+static void select_free_buffers (void)
 {
 	int i;
 	
@@ -401,7 +397,7 @@ void read_current_block (Block nnr, char * addr)
 	}
 }
 
-void queue_flush()
+static void queue_flush(void)
 {
   ssize_t read;
 
@@ -426,7 +422,7 @@ void queue_flush()
   last_block = -1;
 }
 
-void queue_read_current_block (Block nnr, char * addr)
+static void queue_read_current_block (Block nnr, char * addr)
 {
   loff_t offset;
 
@@ -452,7 +448,7 @@ void queue_read_current_block (Block nnr, char * addr)
   last_block = nnr;
   queue_block_count++;
   if (queue_count &&
-      queue[queue_count-1].iov_base + queue[queue_count-1].iov_len == addr)
+      (char *)queue[queue_count-1].iov_base + queue[queue_count-1].iov_len == addr)
     {
       /* append to previous entry */
       queue[queue_count-1].iov_len += block_size;
@@ -464,7 +460,7 @@ void queue_read_current_block (Block nnr, char * addr)
     queue_flush();
 }
 
-void queue_write_current_block (Block nnr, char * addr)
+static void queue_write_current_block (Block nnr, char * addr)
 {
   loff_t offset;
 
@@ -491,7 +487,7 @@ void queue_write_current_block (Block nnr, char * addr)
   last_block = nnr;
   queue_block_count++;
   if (queue_count &&
-      queue[queue_count-1].iov_base + queue[queue_count-1].iov_len == addr)
+      (char *)queue[queue_count-1].iov_base + queue[queue_count-1].iov_len == addr)
     {
       /* append to previous entry */
       queue[queue_count-1].iov_len += block_size;
@@ -574,7 +570,7 @@ void read_buffer_data (Buffer *b)
 	/* Don't bother reading here if we are in readonly mode; there
 	   will be no need to write it back at any time. */
 	if (!readonly)
-		queue_read_current_block (source, b->datap);
+		queue_read_current_block (source, buffer_pool + ((b - pool) * block_size));
 	b->full = 1;
 	count_buffer_reads++;
 	return;
@@ -588,7 +584,7 @@ void write_buffer_data_at (Buffer *b, Block dest)
 			(unsigned long) dest);
 	assert (b->in_use & b->full);
 	if (!readonly)
-		queue_write_current_block (dest, b->datap);
+		queue_write_current_block (dest, buffer_pool + ((b - pool) * block_size));
 	if (b->btype != FORCE) {
 		assert (b->btype == OUTPUT);
 		count_buffer_writes++;

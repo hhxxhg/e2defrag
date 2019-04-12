@@ -40,6 +40,8 @@
 int debug = 0;
 #endif
 
+#define HOLE_BLKADDR(_b) ((_b) == 0 || (_b) == 0xffffffff)
+
 char const *RCSID = "$Id: defrag.c,v 1.4 1997/08/17 14:23:57 linux Exp $";
 
 int die_on_io_error = 1;

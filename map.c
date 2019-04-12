@@ -198,7 +198,7 @@ struct map_extent *map_reverse_get_extent_next(Block b)
 
 
 
-struct map_extent *map_reverse_first ()
+struct map_extent *map_reverse_first (void)
 {
 	struct rb_node *node = rb_first (&reverse_tree_root);
 	if (node == NULL)

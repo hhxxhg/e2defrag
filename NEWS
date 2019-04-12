@@ -3,6 +3,14 @@ Public e2defrag release 0.81
 NEWS
 ====
 
+New in 0.82
+
+  - Fixed some compiler errors and warnings
+  - Fixed a 32 bit overflow on larger memory systems
+  - Changed memory detection to not use /proc/memstat, whose format has
+    changed on recent kernels.
+  - Some minor optimizations
+
 New in 0.81
 
   - Rewrote extent handling code to resolve some errors

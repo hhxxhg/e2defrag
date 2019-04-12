@@ -95,6 +95,6 @@ ulong choose_block (ulong inode);
 void check_group_population (void);
 void update_group_population (ulong znr, enum walk_zone_mode mode, ulong inode);
 void save_group_population(void);
-void restore_group_population ();
+void restore_group_population (void);
 
 extern int gp_stack_count;

@@ -17,6 +17,7 @@ Block map_forward_get (Block b);
 Block map_reverse_get (Block b);
 void map_forward_set (Block old, Block new);
 void map_identity_add (Block start, Block count);
+void dump_extents (void);
 
 struct map_extent {
 	Block old, new;
@@ -25,7 +26,7 @@ struct map_extent {
 	struct rb_node rb_reverse_node;
 };
 
-struct map_extent *map_reverse_first ();
+struct map_extent *map_reverse_first (void);
 struct map_extent *map_reverse_next (struct map_extent *e);
 struct map_extent *map_reverse_get_extent (Block b);
 struct map_extent *map_reverse_get_extent_next(Block b);
