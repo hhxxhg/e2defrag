@@ -16,6 +16,7 @@ jobs:
       run: |
           sudo apt-get update
           sudo apt-get install dnf
+          dnf repolist all
           dnf install e2fsprogs-devel
           
     - name: configure
