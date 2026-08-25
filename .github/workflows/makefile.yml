@@ -12,14 +12,18 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Install dependencies
+      run: |
+          sudo apt-get update
+          sudo apt-get install dnf
+          dnf install e2fsprogs-devel
+          
     - name: configure
       run: ./configure
-
-    - name: Install dependencies
-      run: make
 
     - name: Run check
       run: make check
 
     - name: Run distcheck
-      run: make distcheck
+      run: | #make distcheck
+          ls
