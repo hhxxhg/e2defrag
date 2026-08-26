@@ -20,9 +20,17 @@ jobs:
     - name: configure
       run: ./configure LDFLAGS=-Wl,--allow-multiple-definition
 
-    - name: Run check
+    - name: Run compilation and check
       run: make check
 
-    - name: Run distcheck
-      run: | #make distcheck
-          ls
+    - name: Archive production artifacts
+      uses: actions/upload-artifact@v7
+      with:
+          #name: dist-without-markdown
+          path: |
+            defrag
+            e2defrag
+            README
+            NEWS
+            AUTHORS
+          if-no-files-found: error
