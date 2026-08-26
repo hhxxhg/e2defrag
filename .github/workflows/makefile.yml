@@ -27,7 +27,7 @@ jobs:
       run: sed -i "s/ncurses/ncursesw/" ./configure
           
     - name: configure
-      run: ./configure LDFLAGS=-Wl,--allow-multiple-definition,--trace
+      run: ./configure LDFLAGS=-Wl,--allow-multiple-definition,-M
 
     - name: Run compilation and check
       run: |
