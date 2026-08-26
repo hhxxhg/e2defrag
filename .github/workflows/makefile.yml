@@ -14,12 +14,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-          sudo apt-get update
-          sudo apt-get install dnf
-          # Install the EPEL release package
-          sudo dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
-          dnf repolist all
-          dnf install e2fsprogs-devel
+          sudo apt-get libext2fs-dev
           
     - name: configure
       run: ./configure
