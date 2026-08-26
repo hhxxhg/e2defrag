@@ -23,7 +23,7 @@ jobs:
 
     - name: Patch configure to switch to ncurcesew
       if: inputs.ncurses_typ
-      run: sed -i "s/ncurses/ncursesw/;p" ./configure
+      run: sed -i "s/ncurses/ncursesw/" ./configure
           
     - name: configure
       run: ./configure LDFLAGS=-Wl,--allow-multiple-definition
