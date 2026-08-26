@@ -2,7 +2,11 @@ name: Makefile CI
 
 on:
   workflow_dispatch:
-    null
+    inputs:
+        ncurses_typ:
+            type: boolean
+            description: 'Use ncursew'
+            default: true
 
 jobs:
   build:
@@ -10,12 +14,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - name: Install dependencies
       run: |
           sudo apt-get update
           sudo apt-get install libext2fs-dev
+
+    - name: Patch configure to switch to ncurcesew
+      if: inputs.ncurses_typ
+      run: sed -i "s/ncurses/ncursesw/;p" ./configure
           
     - name: configure
       run: ./configure LDFLAGS=-Wl,--allow-multiple-definition
