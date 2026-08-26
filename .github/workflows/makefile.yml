@@ -14,7 +14,8 @@ jobs:
 
     - name: Install dependencies
       run: |
-          sudo apt-get libext2fs-dev
+          sudo apt-get update
+          sudo apt-get install libext2fs-dev
           
     - name: configure
       run: ./configure
