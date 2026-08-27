@@ -33,7 +33,7 @@ jobs:
     - name: Compile ncurses separately to fulfill the requirement
       if: inputs.no_tinfo
       run: |
-          sudo apt-get uninstall libncurses-dev
+          sudo apt-get remove libncurses-dev
           wget -q -O nc.tar.gz http://ftp.gnu.org/pub/gnu/ncurses/ncurses-6.6.tar.gz
           tar -xf nc.tar.gz
           mv ncurses* ncurse
