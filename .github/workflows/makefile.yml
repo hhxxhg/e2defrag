@@ -45,7 +45,7 @@ jobs:
     - name: configure
       run: |
           cf="-I." # overstress the priority of header files in the source directory to ensure their precedence, to avoid conflicts caused by other config.h
-          lf=-Wl,--allow-multiple-definition
+          lf=-Wl,--allow-multiple-definition,-M
           if [ "${{inputs.no_tinfo}}" = true ]; then
               cf=${cf}" -I ./ncurse/dist/include"
               lf=${lf},-L,./ncurse/dist/lib
