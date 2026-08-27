@@ -33,6 +33,7 @@ jobs:
     - name: Compile ncurses separately to fulfill the requirement
       if: inputs.no_tinfo
       run: |
+          sudo apt-get uninstall libncurses-dev
           wget -q -O nc.tar.gz http://ftp.gnu.org/pub/gnu/ncurses/ncurses-6.6.tar.gz
           tar -xf nc.tar.gz
           mv ncurses* ncurse
@@ -46,8 +47,8 @@ jobs:
           cf="-I." # overstress the priority of header files in the source directory to ensure their precedence, to avoid conflicts caused by other config.h
           lf=-Wl,--allow-multiple-definition
           if [ "${{inputs.no_tinfo}}" = true ]; then
-              cf=${cf}" -I ncurse/include"
-              lf=${lf},-L,ncurse/lib
+              cf=${cf}" -I ./ncurse/include"
+              lf=${lf},-L,./ncurse/lib
           fi
           ./configure CFLAGS="$cf" LDFLAGS="$lf"
 
