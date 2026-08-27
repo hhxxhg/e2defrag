@@ -34,7 +34,7 @@ jobs:
       if: inputs.no_tinfo
       run: |
           wget -O nc.tar.gz http://ftp.gnu.org/pub/gnu/ncurses/ncurses-6.6.tar.gz
-          tar -vxf nc.tar.gz
+          tar -xf nc.tar.gz
           mv ncurses* ncurse
           cd ncurse/
           ./configure --prefix=$PWD --without-cxx --without-cxx-binding --without-ada --without-manpages --enable-overwrite --without-debug --without-tests --with-shared --without-tests --without-progs $([ "${{inputs.ncursesw_typ}}" = true ] && echo --enable-widec || echo --disable-widec)
@@ -49,7 +49,7 @@ jobs:
               cf=${cf}" -I ncurse/include"
               lf=${lf},-L,ncurse/lib
           fi
-          ./configure CFLAGS=$cf LDFLAGS=$lf
+          ./configure CFLAGS="$cf" LDFLAGS="$lf"
 
     - name: Run compilation and check
       run: |
