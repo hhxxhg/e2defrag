@@ -38,17 +38,17 @@ jobs:
           tar -xf nc.tar.gz
           mv ncurses* ncurse
           cd ncurse/
-          ./configure --prefix=$PWD --without-cxx --without-cxx-binding --without-ada --without-manpages --enable-overwrite --without-debug --without-tests --with-shared --without-tests --without-progs $([ "${{inputs.ncursesw_typ}}" = true ] && echo --enable-widec || echo --disable-widec)
+          ./configure --prefix=$PWD/dist --without-cxx --without-cxx-binding --without-ada --without-manpages --enable-overwrite --without-debug --without-tests --with-shared --without-tests --without-progs $([ "${{inputs.ncursesw_typ}}" = true ] && echo --enable-widec || echo --disable-widec)
           make # && make install 
-          ls include
+          ls -R dist/
           
     - name: configure
       run: |
           cf="-I." # overstress the priority of header files in the source directory to ensure their precedence, to avoid conflicts caused by other config.h
           lf=-Wl,--allow-multiple-definition
           if [ "${{inputs.no_tinfo}}" = true ]; then
-              cf=${cf}" -I ./ncurse/include"
-              lf=${lf},-L,./ncurse/lib
+              cf=${cf}" -I ./ncurse/dist/include"
+              lf=${lf},-L,./ncurse/dist/lib
           fi
           ./configure CFLAGS="$cf" LDFLAGS="$lf"
 
