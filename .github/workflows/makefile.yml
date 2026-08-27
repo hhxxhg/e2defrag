@@ -3,9 +3,13 @@ name: Makefile CI
 on:
   workflow_dispatch:
     inputs:
-        ncurses_typ:
+        ncursesw_typ:
             type: boolean
-            description: 'Use ncursew'
+            description: 'Target OS uses ncursesw other than ncurses'
+            default: true
+        no_tinfo:
+            type: boolean
+            description: 'Ncurses(w) of the target OS does not split out libtinfo'
             default: true
 
 jobs:
@@ -22,12 +26,30 @@ jobs:
           sudo apt-get install libext2fs-dev
           sudo apt-get install libncurses-dev
 
-    - name: Patch configure to switch to ncurcesew
-      if: inputs.ncurses_typ
+    - name: Patch configure to switch to ncurcesw
+      if: inputs.ncursesw_typ
       run: sed -i "s/ncurses/ncursesw/" ./configure
+      
+    - name: Compile ncurses separately to fulfill the requirement
+      if: inputs.no_tinfo
+      run: |
+          wget http://ftp.gnu.org/pub/gnu/ncurses/ncurses-6.6.tar.gz
+          tar -vxf ncurses-6.1.tar.gz
+          mv ncurses* ncurse
+          cd ncurse/
+          ./configure --prefix=$PWD --without-cxx --without-cxx-binding --without-ada --without-manpages --enable-overwrite --without-debug --without-tests --with-shared --without-tests --without-progs $([ "${{inputs.ncursesw_typ}}" = true ] && echo --enable-widec || echo --disable-widec)
+          make # && make install 
+          ls
           
     - name: configure
-      run: ./configure LDFLAGS=-Wl,--allow-multiple-definition,-M
+      run: |
+          cf=""
+          lf=-Wl,--allow-multiple-definition
+          if [ "${{inputs.ncursesw_typ}}" = true ]; then
+              cf=${cf}" -I ncurse/include"
+              lf=${lf},-L,ncurse/lib
+          fi
+          ./configure CFLAGS=$cf LDFLAGS=$lf
 
     - name: Run compilation and check
       run: |
