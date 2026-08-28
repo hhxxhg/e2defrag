@@ -27,7 +27,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install libext2fs-dev
           #sudo apt-get install libncurses-dev
-          echo "ncname=${ncurses_url##/}" >> $GITHUB_ENV
+          echo "ncname=${ncurses_url##*/}" >> $GITHUB_ENV
 
     - name: Patch configure to switch to ncurcesw
       if: inputs.ncursesw_typ
@@ -44,7 +44,9 @@ jobs:
     - name: Compile ncurses separately to fulfill the requirement
       if: ${{ inputs.no_tinfo && steps.cache.outputs.cache-hit != 'true' }}
       run: |
-          #sudo apt-get remove libncurses-dev
+          sudo apt-get remove libncurses-dev
+          sudo apt-get remove libncurses
+          apt list --installed
           wget -q -O nc.tar.gz ${{env.ncurses_url}}
           tar -xf nc.tar.gz
           mv ncurses* ncurse
