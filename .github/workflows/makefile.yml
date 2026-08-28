@@ -54,7 +54,7 @@ jobs:
           sudo apt-get update
           apt-get source ncurses
           ls
-          mv ncurses* ncurse
+          mv ncurses*/ ncurse
           cd ncurse/
           ./configure --prefix=$PWD/dist --without-cxx --without-cxx-binding --without-ada --without-manpages --enable-overwrite --without-debug --without-tests --with-shared --without-tests --without-progs $([ "${{inputs.ncursesw_typ}}" = true ] && echo --enable-widec || echo --disable-widec)
           make && make install 
