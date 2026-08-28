@@ -45,7 +45,7 @@ jobs:
     - name: Compile ncurses separately to fulfill the requirement
       if: ${{ inputs.no_tinfo && steps.cache.outputs.cache-hit != 'true' }}
       run: |
-          sudo apt-get -f --force-yes remove libncurses-dev libncurses6 libncursesw6 dconf-gsettings-backen python3 shim-signed
+          sudo apt-get -f --force-yes remove libncurses-dev libncurses6 libncursesw6 dconf-gsettings-backend python3 shim-signed
           wget -q -O nc.tar.gz ${{env.ncurses_url}}
           tar -xf nc.tar.gz
           mv ncurses* ncurse
