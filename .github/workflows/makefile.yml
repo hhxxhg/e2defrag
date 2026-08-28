@@ -25,12 +25,11 @@ jobs:
     - name: Install dependencies
       run: |
           sudo apt-get update
-          apt-cache show ncurses-base & exit 1
           sudo apt-get install libext2fs-dev
           #sudo apt-get install libncurses-dev
           #apt list --installed
 
-          echo "ncname=nc-$(apt-cache policy ncurses | awk '/Candidate:/ {print $2}')" >> $GITHUB_ENV
+          echo "ncname=nc-$(apt-cache show ncurses-base | awk '/Version:/ {print $2}')" >> $GITHUB_ENV
           #echo "ncname=${ncurses_url##*/}" >> $GITHUB_ENV
 
     - name: Patch configure to switch to ncurcesw
