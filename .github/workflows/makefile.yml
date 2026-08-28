@@ -29,6 +29,7 @@ jobs:
           #sudo apt-get install libncurses-dev
           #apt list --installed
 
+          apt-cache policy ncurses
           echo "ncname=nc-$(apt-cache policy ncurses | awk '/Candidate:/ {print $2}')" >> $GITHUB_ENV
           #echo "ncname=${ncurses_url##*/}" >> $GITHUB_ENV
 
@@ -50,6 +51,8 @@ jobs:
           sudo apt-get -f --force-yes remove libncurses-dev
           #wget -q -O nc.tar.gz ${{env.ncurses_url}}
           #tar -xf nc.tar.gz
+          sudo sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
+          sudo apt-get update
           apt-get source ncurses
           mv ncurses* ncurse
           cd ncurse/
