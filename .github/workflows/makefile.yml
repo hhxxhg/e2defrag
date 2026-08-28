@@ -25,11 +25,11 @@ jobs:
     - name: Install dependencies
       run: |
           sudo apt-get update
+          apt-get --no-act install ncurses-base & exit 1
           sudo apt-get install libext2fs-dev
           #sudo apt-get install libncurses-dev
           #apt list --installed
 
-          apt list -a ncurses & exit 1
           echo "ncname=nc-$(apt-cache policy ncurses | awk '/Candidate:/ {print $2}')" >> $GITHUB_ENV
           #echo "ncname=${ncurses_url##*/}" >> $GITHUB_ENV
 
