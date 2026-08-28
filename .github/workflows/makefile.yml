@@ -53,17 +53,16 @@ jobs:
           sudo sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
           sudo apt-get update
           apt-get source ncurses
-          ls
           mv ncurses*/ ncurse
           cd ncurse/
           ./configure --prefix=$PWD/dist --without-cxx --without-cxx-binding --without-ada --without-manpages --enable-overwrite --without-debug --without-tests --with-shared --without-tests --without-progs $([ "${{inputs.ncursesw_typ}}" = true ] && echo --enable-widec || echo --disable-widec)
           make && make install 
-          ls -R dist
+          #ls -R dist
           
     - name: configure
       run: |
           cf="-I." # overstress the priority of header files in the source directory to ensure their precedence, to avoid conflicts caused by other config.h
-          lf=-Wl,--allow-multiple-definition,-M
+          lf=-Wl,--allow-multiple-definition    #,-M
           if [ "${{inputs.no_tinfo}}" = true ]; then
               cf=${cf}" -I ./ncurse/dist/include"
               lf=${lf},-L,./ncurse/dist/lib
