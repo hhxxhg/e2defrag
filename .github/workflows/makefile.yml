@@ -12,7 +12,7 @@ on:
             description: 'Ncurses(w) of the target OS does not split out libtinfo'
             default: true
 env: 
-  ncurses_url: http://ftp.gnu.org/pub/gnu/ncurses/ncurses-6.6.tar.gz
+  ncurses_url: https://mirrors.dotsrc.org/gnu/ncurses/ncurses-6.6.tar.gz
 
 jobs:
   build:
