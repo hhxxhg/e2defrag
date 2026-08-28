@@ -25,7 +25,7 @@ jobs:
     - name: Install dependencies
       run: |
           sudo apt-get update
-          apt-cache showpkg ncurses-base & exit 1
+          apt-cache show ncurses-base & exit 1
           sudo apt-get install libext2fs-dev
           #sudo apt-get install libncurses-dev
           #apt list --installed
