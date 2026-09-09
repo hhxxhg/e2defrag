@@ -71,7 +71,7 @@ jobs:
           apt-get source ncurses
           mv ncurses*/ ncurse
           cd ncurse/
-          ./configure --prefix=$PWD/dist --without-cxx --without-cxx-binding --without-ada --without-manpages --enable-overwrite --without-debug --without-tests --with-shared --without-tests --without-progs $([ "${{inputs.ncursesw_typ}}" = true ] && echo --enable-widec || echo --disable-widec) --host=${{inputs.host}}
+          ./configure --prefix=$PWD/dist --without-cxx --without-cxx-binding --without-ada --without-manpages --enable-overwrite --without-debug --without-tests --with-shared --without-tests --without-progs $([ "${{inputs.ncursesw_typ}}" = true ] && echo --enable-widec || echo --disable-widec) --host=${{inputs.host}} || cat config.log
           make && make install 
           #ls -R dist
           
