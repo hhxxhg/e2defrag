@@ -11,6 +11,13 @@ on:
             type: boolean
             description: 'Ncurses(w) of the target OS does not split out libtinfo'
             default: true
+        host:
+            type: choice
+            description: 'Target ABI'
+            options:
+              - x86_64
+              - i686
+            default: x86_64
 #env: 
 #  ncurses_url: https://mirrors.dotsrc.org/gnu/ncurses/ncurses-6.6.tar.gz
 
@@ -29,7 +36,7 @@ jobs:
           #sudo apt-get install libncurses-dev
           #apt list --installed
 
-          echo "ncname=ncrs$(apt-cache show ncurses-base | awk '/Version:/ {print $2;exit}')" >> $GITHUB_ENV
+          echo "ncname=ncrs$(apt-cache show ncurses-base | awk '/Version:/ {print $2;exit}')-${{inputs.host}}" >> $GITHUB_ENV
           #echo "ncname=${ncurses_url##*/}" >> $GITHUB_ENV
 
     - name: Patch configure to switch to ncurcesw
@@ -44,10 +51,20 @@ jobs:
           path: ncurse
           key: ${{env.ncname}}
       
-    - name: Compile ncurses separately to fulfill the requirement
+    - name: Compile ncurses separately to fulfill the requirement of dependency
       if: ${{ inputs.no_tinfo && steps.cache.outputs.cache-hit != 'true' }}
       run: |
           sudo apt-get -f --force-yes remove libncurses-dev
+
+          local cf
+          case ${{inputs.host}} in
+            x86_64 )
+            ;;
+            i686 )
+            cf="-m32 "$cf
+            ;;
+          esac
+          
           #wget -q -O nc.tar.gz ${{env.ncurses_url}}
           #tar -xf nc.tar.gz
           sudo sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
@@ -55,7 +72,7 @@ jobs:
           apt-get source ncurses
           mv ncurses*/ ncurse
           cd ncurse/
-          ./configure --prefix=$PWD/dist --without-cxx --without-cxx-binding --without-ada --without-manpages --enable-overwrite --without-debug --without-tests --with-shared --without-tests --without-progs $([ "${{inputs.ncursesw_typ}}" = true ] && echo --enable-widec || echo --disable-widec)
+          ./configure --prefix=$PWD/dist --without-cxx --without-cxx-binding --without-ada --without-manpages --enable-overwrite --without-debug --without-tests --with-shared --without-tests --without-progs $([ "${{inputs.ncursesw_typ}}" = true ] && echo --enable-widec || echo --disable-widec) CFLAGS="$cf"
           make && make install 
           #ls -R dist
           
@@ -67,6 +84,13 @@ jobs:
               cf=${cf}" -I ./ncurse/dist/include"
               lf=${lf},-L,./ncurse/dist/lib
           fi
+          case ${{inputs.host}} in
+            x86_64 )
+            ;;
+            i686 )
+            cf="-m32 "$cf
+            ;;
+          esac
           ./configure CFLAGS="$cf" LDFLAGS="$lf"
 
     - name: Run compilation and check
