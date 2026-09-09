@@ -56,13 +56,13 @@ jobs:
       run: |
           sudo apt-get -f --force-yes remove libncurses-dev
           
-          case ${{inputs.host}} in
-            x86_64 )
-            ;;
-            i686 )
-            cf="-m32 "$cf
-            ;;
-          esac
+          #case ${{inputs.host}} in
+          #  x86_64 )
+          #  ;;
+          #  i686 )
+          #  cf="-m32 "$cf
+          #  ;;
+          #esac
           
           #wget -q -O nc.tar.gz ${{env.ncurses_url}}
           #tar -xf nc.tar.gz
@@ -71,7 +71,7 @@ jobs:
           apt-get source ncurses
           mv ncurses*/ ncurse
           cd ncurse/
-          ./configure --prefix=$PWD/dist --without-cxx --without-cxx-binding --without-ada --without-manpages --enable-overwrite --without-debug --without-tests --with-shared --without-tests --without-progs $([ "${{inputs.ncursesw_typ}}" = true ] && echo --enable-widec || echo --disable-widec) CFLAGS="$cf"
+          ./configure --prefix=$PWD/dist --without-cxx --without-cxx-binding --without-ada --without-manpages --enable-overwrite --without-debug --without-tests --with-shared --without-tests --without-progs $([ "${{inputs.ncursesw_typ}}" = true ] && echo --enable-widec || echo --disable-widec) --host=${{inputs.host}}
           make && make install 
           #ls -R dist
           
@@ -83,13 +83,13 @@ jobs:
               cf=${cf}" -I ./ncurse/dist/include"
               lf=${lf},-L,./ncurse/dist/lib
           fi
-          case ${{inputs.host}} in
-            x86_64 )
-            ;;
-            i686 )
-            cf="-m32 "$cf
-            ;;
-          esac
+          #case ${{inputs.host}} in
+          #  x86_64 )
+          #  ;;
+          #  i686 )
+          #  cf="-m32 "$cf
+          #  ;;
+          #esac
           ./configure CFLAGS="$cf" LDFLAGS="$lf"
 
     - name: Run compilation and check
