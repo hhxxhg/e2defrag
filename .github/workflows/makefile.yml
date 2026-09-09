@@ -39,6 +39,14 @@ jobs:
           echo "ncname=ncrs$(apt-cache show ncurses-base | awk '/Version:/ {print $2;exit}')-${{inputs.host}}" >> $GITHUB_ENV
           #echo "ncname=${ncurses_url##*/}" >> $GITHUB_ENV
 
+          case ${{inputs.host}} in
+            x86_64 )
+            ;;
+            i686 )
+            sudo apt-get install gcc-14-i686-linux-gnu
+            ;;
+          esac
+
     - name: Patch configure to switch to ncurcesw
       if: inputs.ncursesw_typ
       run: sed -i "s/ncurses/ncursesw/" ./configure
