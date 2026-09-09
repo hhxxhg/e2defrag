@@ -55,8 +55,7 @@ jobs:
       if: ${{ inputs.no_tinfo && steps.cache.outputs.cache-hit != 'true' }}
       run: |
           sudo apt-get -f --force-yes remove libncurses-dev
-
-          local cf
+          
           case ${{inputs.host}} in
             x86_64 )
             ;;
