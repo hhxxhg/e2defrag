@@ -15,9 +15,9 @@ on:
             type: choice
             description: 'Target ABI'
             options:
-              - x86_64
+              - x86-64
               - i686
-            default: x86_64
+            default: x86-64
 #env: 
 #  ncurses_url: https://mirrors.dotsrc.org/gnu/ncurses/ncurses-6.6.tar.gz
 
@@ -40,7 +40,7 @@ jobs:
           #echo "ncname=${ncurses_url##*/}" >> $GITHUB_ENV
 
           case ${{inputs.host}} in
-            x86_64 )
+            x86-64 )
             ;;
             i686 )
             sudo apt-get install gcc-i686-linux-gnu
@@ -65,7 +65,7 @@ jobs:
           sudo apt-get -f --force-yes remove libncurses-dev
           
           #case ${{inputs.host}} in
-          #  x86_64 )
+          #  x86-64 )
           #  ;;
           #  i686 )
           #  cf="-m32 "$cf
@@ -92,13 +92,13 @@ jobs:
               lf=${lf},-L,./ncurse/dist/lib
           fi
           #case ${{inputs.host}} in
-          #  x86_64 )
+          #  x86-64 )
           #  ;;
           #  i686 )
           #  cf="-m32 "$cf
           #  ;;
           #esac
-          ./configure CFLAGS="$cf" LDFLAGS="$lf"
+          ./configure CFLAGS="$cf" LDFLAGS="$lf" --host=${{inputs.host}}-linux-gnu || cat config.log
 
     - name: Run compilation and check
       run: |
