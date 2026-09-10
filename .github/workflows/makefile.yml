@@ -41,18 +41,24 @@ jobs:
 
           case ${{inputs.host}} in
             x86-64 )
+            cross=false
             ;;
             i686 )
+            cross=true
             sudo apt-get install gcc-i686-linux-gnu
             ;;
           esac
+
+          if [[ ${{inputs.no_tinfo}} == true || cross == true ]]; then
+              echo "compncsep=true" >> $GITHUB_ENV
+          fi
 
     - name: Patch configure to switch to ncurcesw
       if: inputs.ncursesw_typ
       run: sed -i "s/ncurses/ncursesw/" ./configure
 
     - name: Cache compiled ncurses lib
-      if: inputs.no_tinfo
+      if: env.compncsep
       id: cache
       uses: actions/cache@v6
       with:
@@ -60,7 +66,7 @@ jobs:
           key: ${{env.ncname}}
       
     - name: Compile ncurses separately to fulfill the requirement of dependency
-      if: ${{ inputs.no_tinfo && steps.cache.outputs.cache-hit != 'true' }}
+      if: ${{ env.compncsep && steps.cache.outputs.cache-hit != 'true' }}
       run: |
           sudo apt-get -f --force-yes remove libncurses-dev
           
@@ -102,6 +108,10 @@ jobs:
 
     - name: Run compilation and check
       run: |
+          if [ "${{inputs.no_tinfo}}" = true ]; then
+              export LIBRARY_PATH=./ncurse/dist/lib
+              export LD_LIBRARY_PATH=$LIBRARY_PATH
+          fi
           make check
           ldd e2defrag
 
