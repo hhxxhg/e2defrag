@@ -93,7 +93,7 @@ jobs:
       run: |
           cf="-I." # overstress the priority of header files in the source directory to ensure their precedence, to avoid conflicts caused by other config.h
           lf=-Wl,--allow-multiple-definition    #,-M
-          if [ "${{inputs.no_tinfo}}" = true ]; then
+          if [ "${{env.compncsep}}" = true ]; then
               cf=${cf}" -I ./ncurse/dist/include"
               lf=${lf},-L,./ncurse/dist/lib
           fi
@@ -108,8 +108,8 @@ jobs:
 
     - name: Run compilation and check
       run: |
-          if [ "${{inputs.no_tinfo}}" = true ]; then
-              export LIBRARY_PATH=./ncurse/dist/lib
+          if [ "${{env.compncsep}}" = true ]; then
+              export LIBRARY_PATH=$(realpath ./ncurse/dist/lib)
               export LD_LIBRARY_PATH=$LIBRARY_PATH
           fi
           make check
